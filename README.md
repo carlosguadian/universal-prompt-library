@@ -1,4 +1,6 @@
 # Universal Prompt Library 🚀
+![Screenshot of the extension](screenshot.png)
+![Screenshot of modal asking variable](screenshot1.png)
 
 A powerful, local-first Chrome Extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, and more).
 
