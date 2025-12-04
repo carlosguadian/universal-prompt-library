@@ -1,6 +1,5 @@
 # Universal Prompt Library 🚀
 ![Screenshot of the extension](screenshot.png)
-![Screenshot of modal asking variable](screenshot1.png)
 
 A powerful, local-first Chrome Extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, and more).
 
@@ -47,6 +46,7 @@ You can create dynamic templates using double curly braces `{{...}}`.
 > "Write a {{Tone}} blog post about {{Topic}} focused on {{Audience}}."
 
 When you click the **Send/Inject** button (paper plane icon), the extension will open a modal asking you to fill in "Tone", "Topic", and "Audience" one by one, and then inject the final text into the AI chat.
+![Screenshot of modal asking variable](screenshot1.png)
 
 ### 4. Backup
 Use the **Save (Disk)** icon to download a `.json` backup of your library. Use the **Upload** icon to restore it.
