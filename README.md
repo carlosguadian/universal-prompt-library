@@ -46,6 +46,7 @@ You can create dynamic templates using double curly braces `{{...}}`.
 > "Write a {{Tone}} blog post about {{Topic}} focused on {{Audience}}."
 
 When you click the **Send/Inject** button (paper plane icon), the extension will open a modal asking you to fill in "Tone", "Topic", and "Audience" one by one, and then inject the final text into the AI chat.
+
 ![Screenshot of modal asking variable](screenshot1.png)
 
 ### 4. Backup
