@@ -8,6 +8,7 @@ A powerful, local-first Chrome Extension to manage, organize, and inject prompts
 
 ## 🌟 Features
 
+* **🔍 Instant Search:** Real-time filtering to find prompts by title or content instantly.
 * **📂 Unlimited Folders:** Organize your prompts in a nested folder structure without limits.
 * **🖱️ Smart Drag & Drop:** Reorder prompts, move them between folders, and organize your library intuitively.
 * **🧩 Dynamic Variables:** Use placeholders like `{{Topic}}` or `{{Tone}}` in your prompts. The extension will ask for input via a custom modal before injecting.
@@ -32,9 +33,10 @@ Since this extension is currently in **Developer Mode** (not yet in the Chrome W
 ### 1. Opening the Library
 Click the extension icon in your toolbar. This will open the **Chrome Side Panel** on the right side of your screen.
 
-### 2. Creating & Organizing
-* Use the buttons at the top to create a **New Folder** 📂 or a **New Prompt** 📝.
-* **Drag and drop** items to reorder them or move them inside folders.
+### 2. Organizing & Searching
+* **Search:** Type in the top search bar to filter your library instantly. It searches through both prompt titles and their content.
+* **Create:** Use the buttons at the top to create a **New Folder** 📂 or a **New Prompt** 📝.
+* **Drag & Drop:** Drag items to reorder them or move them inside folders.
     * *Top of item:* Insert before.
     * *Bottom of item:* Insert after.
     * *Center (Folders only):* Move inside.
@@ -45,9 +47,7 @@ You can create dynamic templates using double curly braces `{{...}}`.
 **Example Prompt:**
 > "Write a {{Tone}} blog post about {{Topic}} focused on {{Audience}}."
 
-When you click the **Send/Inject** button (paper plane icon), the extension will open a modal asking you to fill in "Tone", "Topic", and "Audience" one by one, and then inject the final text into the AI chat.
-
-![Screenshot of modal asking variable](screenshot1.png)
+When you click the **Send/Inject** button (paper plane icon), the extension will open a large modal asking you to fill in "Tone", "Topic", and "Audience", and then inject the final text into the AI chat.
 
 ### 4. Backup
 Use the **Save (Disk)** icon to download a `.json` backup of your library. Use the **Upload** icon to restore it.
