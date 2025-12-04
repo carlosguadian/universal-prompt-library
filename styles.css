@@ -1,0 +1,125 @@
+/* Configuración General */
+body { 
+  font-family: 'Segoe UI', sans-serif; 
+  margin: 0; 
+  padding: 0; 
+  background: #f7f7f8; 
+  color: #333; 
+}
+
+.header { 
+  padding: 10px; 
+  background: #fff; 
+  border-bottom: 1px solid #ddd; 
+  position: sticky; 
+  top: 0; 
+  z-index: 10; 
+}
+
+input[type="text"], textarea { 
+  width: 100%; 
+  padding: 8px; 
+  margin-bottom: 5px; 
+  box-sizing: border-box; 
+  border: 1px solid #ccc; 
+  border-radius: 4px; 
+  font-family: inherit; 
+}
+
+.actions { display: flex; gap: 5px; margin-top: 5px; }
+
+button { 
+  cursor: pointer; 
+  border: none; 
+  background: #eee; 
+  padding: 5px; 
+  border-radius: 4px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  color: #333;
+}
+button:hover { background: #ddd; }
+
+.library-container { padding: 10px; padding-bottom: 50px; }
+
+/* --- ESTILOS DEL ÁRBOL --- */
+.node { margin-top: 2px; }
+
+/* EL CAMBIO CLAVE: El header es el elemento interactivo */
+.node-header { 
+  display: flex; 
+  align-items: center; 
+  padding: 6px; 
+  background: #fff; 
+  border-radius: 4px; 
+  cursor: grab; /* Manita abierta para indicar que se puede coger */
+  user-select: none; /* IMPRESCINDIBLE: Evita que se seleccione el texto */
+  border: 2px solid transparent; /* Reserva espacio para el borde verde */
+  transition: background 0.1s;
+}
+
+.node-header:active {
+  cursor: grabbing; /* Manita cerrada al arrastrar */
+}
+
+.node-header:hover { 
+  background: #f0f0f0; 
+  border-color: #eee; 
+}
+
+.node-header.folder { font-weight: 600; color: #444; }
+.node-header.prompt { color: #2c3e50; }
+
+.node-content { 
+  margin-left: 20px; 
+  border-left: 1px solid #ddd; 
+  display: none; 
+}
+.node-content.open { display: block; }
+
+.icon { margin-right: 5px; font-size: 18px; color: #666; pointer-events: none; }
+.spacer { flex-grow: 1; pointer-events: none; } /* Importante para el drag */
+
+.node-actions { display: none; gap: 4px; }
+.node-header:hover .node-actions { display: flex; }
+
+/* --- DRAG & DROP VISUALS (Aplicados al Header) --- */
+.node-header.dragging { 
+  opacity: 0.5; 
+  background: #e0e0e0;
+}
+
+/* Líneas guía de inserción */
+.node-header.drag-top {
+  border-top-color: #10a37f !important;
+  background: linear-gradient(to bottom, #eafff8 0%, transparent 20%);
+}
+
+.node-header.drag-bottom {
+  border-bottom-color: #10a37f !important;
+  background: linear-gradient(to top, #eafff8 0%, transparent 20%);
+}
+
+.node-header.drag-inside {
+  background: #eafff8 !important;
+  border: 2px dashed #10a37f !important;
+}
+
+/* --- MODALES --- */
+.modal { 
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+  background: rgba(0,0,0,0.5); z-index: 100; 
+  display: flex; justify-content: center; align-items: center; 
+}
+.modal.hidden { display: none; }
+.modal-content { 
+  background: white; padding: 20px; border-radius: 8px; 
+  width: 90%; max-width: 350px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+}
+textarea { height: 150px; resize: vertical; font-size: 13px; line-height: 1.4; }
+.modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+.secondary { background: transparent; color: #666; }
+.secondary:hover { background: #f0f0f0; }
+#varConfirmBtn { background-color: #10a37f; color: white; font-weight: 500; padding: 6px 12px; }
+#varConfirmBtn:hover { background-color: #0d8a6a; }

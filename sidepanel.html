@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="header">
+    <input type="text" id="searchInput" placeholder="Buscar prompts...">
+    <div class="actions">
+      <button id="addFolderBtn" title="Nueva Carpeta"><span class="material-icons">create_new_folder</span></button>
+      <button id="addPromptBtn" title="Nuevo Prompt"><span class="material-icons">note_add</span></button>
+      <button id="exportBtn" title="Backup"><span class="material-icons">save_alt</span></button>
+      <button id="importBtn" title="Restaurar"><span class="material-icons">file_upload</span></button>
+      <input type="file" id="fileInput" style="display:none" accept=".json">
+    </div>
+  </div>
+
+  <div id="libraryContainer" class="library-container">
+    </div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modalTitle">Nuevo Item</h3>
+      <input type="text" id="itemTitle" placeholder="Título">
+      <textarea id="itemContent" placeholder="Escribe tu prompt aquí... Usa {{variable}} para datos dinámicos."></textarea>
+      <div class="modal-buttons">
+        <button id="saveBtn">Guardar</button>
+        <button id="cancelBtn" class="secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+  <div id="modal" class="modal hidden">
+    </div>
+
+  <div id="varModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Variable: <span id="varNameTitle" style="color: #10a37f;"></span></h3>
+      <p style="font-size: 12px; color: #666; margin-bottom: 5px;">Introduce el valor para reemplazar en el prompt:</p>
+      <textarea id="varInput" style="height: 150px;" placeholder="Pega aquí tu texto largo..."></textarea>
+      <div class="modal-buttons">
+        <button id="varConfirmBtn" style="background: #10a37f; color: white;">Insertar</button>
+        <button id="varCancelBtn" class="secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
