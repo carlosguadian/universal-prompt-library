@@ -3,6 +3,7 @@
   "name": "Universal Prompt Library",
   "version": "1.0.0",
   "description": "Una potente extensión para gestionar e inyectar prompts en cualquier chatbot de IA.",
+  "author": "Carlos Guadián Orta <admin@k-government.com>",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": ["<all_urls>"],
   
