@@ -1,61 +1,70 @@
 # Universal Prompt Library 🚀
-![Screenshot of the extension](screenshot.png)
 
-A powerful, local-first Chrome Extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, and more).
+A powerful, local-first browser extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, and more).
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-3.0.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![Firefox](https://img.shields.io/badge/firefox-supported-orange.svg)
 
 ## 🌟 Features
 
+* **⚡️ High Performance:** Optimized injection engine capable of handling long texts instantly without freezing the browser.
 * **🔍 Instant Search:** Real-time filtering to find prompts by title or content instantly.
 * **📂 Unlimited Folders:** Organize your prompts in a nested folder structure without limits.
 * **🖱️ Smart Drag & Drop:** Reorder prompts, move them between folders, and organize your library intuitively.
 * **🧩 Dynamic Variables:** Use placeholders like `{{Topic}}` or `{{Tone}}` in your prompts. The extension will ask for input via a custom modal before injecting.
 * **💉 Universal Injection:** Works on **any** website. Automatically detects chat inputs in ChatGPT, Claude, Gemini, Perplexity, and generic text areas.
-* **💾 Local & Private:** All data is stored locally in your browser (`chrome.storage.local`). No external servers, no tracking.
-* **📦 Backup System:** Export and Import your library as a JSON file to keep your data safe or share it between devices.
+* **💾 Local & Private:** All data is stored locally in your browser. No external servers, no tracking.
+* **📦 Backup System:** Export and Import your library as a JSON file to keep your data safe.
 
 ## 🛠️ Installation
 
-Since this extension is currently in **Developer Mode** (not yet in the Chrome Web Store), follow these steps to install it:
+Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-library/releases)** on the right side of this repository to download the correct version for your browser.
 
-1.  **Clone or Download** this repository to a folder on your computer.
-2.  Open Google Chrome (or Edge/Brave/Opera).
-3.  Go to `chrome://extensions/` in the address bar.
-4.  Toggle **"Developer mode"** on in the top right corner.
-5.  Click the **"Load unpacked"** button.
-6.  Select the folder where you downloaded this repository.
-7.  Done! Pin the extension icon to your browser toolbar for easy access.
+### 🟢 Google Chrome / Edge / Brave / Opera
+1.  Download **`universal-prompt-library-chrome.zip`** from the latest Release.
+2.  Unzip the file to a folder.
+3.  Open Chrome and go to `chrome://extensions/`.
+4.  Toggle **"Developer mode"** on (top right corner).
+5.  Click **"Load unpacked"**.
+6.  Select the unzipped folder. **Done!**
+
+### 🦊 Mozilla Firefox
+1.  Download **`universal-prompt-library-firefox.zip`** from the latest Release.
+2.  Unzip the file to a folder.
+3.  Open Firefox and type `about:debugging` in the address bar.
+4.  Click **"This Firefox"** on the left menu.
+5.  Click **"Load Temporary Add-on"**.
+6.  Select the `manifest.json` file inside the unzipped folder. **Done!**
 
 ## 📖 How to Use
 
 ### 1. Opening the Library
-Click the extension icon in your toolbar. This will open the **Chrome Side Panel** on the right side of your screen.
+Click the extension icon in your toolbar (the magic box). This will open the Side Panel.
 
 ### 2. Organizing & Searching
-* **Search:** Type in the top search bar to filter your library instantly. It searches through both prompt titles and their content.
+* **Search:** Type in the top search bar to filter your library instantly.
 * **Create:** Use the buttons at the top to create a **New Folder** 📂 or a **New Prompt** 📝.
-* **Drag & Drop:** Drag items to reorder them or move them inside folders.
+* **Drag & Drop:** Drag items to reorder them.
     * *Top of item:* Insert before.
     * *Bottom of item:* Insert after.
     * *Center (Folders only):* Move inside.
 
 ### 3. Using Variables
-You can create dynamic templates using double curly braces `{{...}}`.
+Create dynamic templates using double curly braces `{{...}}`.
 
 **Example Prompt:**
 > "Write a {{Tone}} blog post about {{Topic}} focused on {{Audience}}."
 
-When you click the **Send/Inject** button (paper plane icon), the extension will open a large modal asking you to fill in "Tone", "Topic", and "Audience", and then inject the final text into the AI chat.
+When you click the **Send/Inject** button (paper plane icon), the extension will ask you to fill in the values and then inject the final text into the AI chat.
 
-### 4. Backup
-Use the **Save (Disk)** icon to download a `.json` backup of your library. Use the **Upload** icon to restore it.
+## 🤝 Contributing & Support
 
-## 🤝 Contributing
+If you find this tool useful, consider subscribing to my AI newsletter:
 
-Contributions are welcome! If you have ideas for improvements:
+👉 **[Subscribe to CluPad](https://carlosguadian.substack.com/subscribe)**
 
+Contributions are welcome!
 1.  Fork the repository.
 2.  Create a new branch (`git checkout -b feature/AmazingFeature`).
 3.  Commit your changes.
@@ -72,4 +81,4 @@ Contributions are welcome! If you have ideas for improvements:
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-*Created with ❤️ for the AI Community.*
+*Created with ❤️ by Carlos Guadián.*
