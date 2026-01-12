@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Universal Prompt Library",
+  "version": "1.0.0",
+  "description": "Una potente extensión para gestionar e inyectar prompts en cualquier chatbot de IA.",
+  "author": "Carlos Guadián",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  /* DIFERENCIA 1: Firefox usa sidebar_action en lugar de side_panel */
+  "sidebar_action": {
+    "default_panel": "sidepanel.html",
+    "default_icon": "images/icon-32.png",
+    "default_title": "Universal Prompt Library",
+    "open_at_install": true
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "icons": {
+    "16": "images/icon-16.png",
+    "32": "images/icon-32.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
+  },
+
+  /* DIFERENCIA 2: ID Obligatorio para Firefox */
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "universal-prompt-library@carlosguadian.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}
