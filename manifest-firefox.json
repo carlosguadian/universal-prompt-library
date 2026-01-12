@@ -11,7 +11,6 @@
     "scripts": ["background.js"]
   },
 
-  /* DIFERENCIA 1: Firefox usa sidebar_action en lugar de side_panel */
   "sidebar_action": {
     "default_panel": "sidepanel.html",
     "default_icon": "images/icon-32.png",
@@ -34,7 +33,6 @@
     "128": "images/icon-128.png"
   },
 
-  /* DIFERENCIA 2: ID Obligatorio para Firefox */
   "browser_specific_settings": {
     "gecko": {
       "id": "universal-prompt-library@carlosguadian.com",
