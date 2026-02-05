@@ -181,3 +181,129 @@ textarea { height: 150px; resize: vertical; font-size: 13px; line-height: 1.4; }
   margin: 0 4px;
   color: #ccc;
 }
+/* Modal de variables */
+#varModal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center; /* Centrado vertical */
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 85%;
+  max-width: 300px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.modal-content h3 span {
+  color: #10a37f;
+  background: #e0f2f1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  margin: 15px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box; /* Importante para que el padding no rompa el ancho */
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #eee;
+}
+
+.modal-actions button.primary {
+  background: #10a37f;
+  color: white;
+}
+/* Estilos para el Historial de Variables (Chips) */
+.history-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+  max-height: 200px; /* Limite para no ocupar toda la pantalla */
+  overflow-y: auto;
+}
+
+.history-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* Espacio entre texto y la X */
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 4px 4px 4px 10px; /* Menos padding a la derecha para la X */
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 100%;
+}
+
+.history-chip:hover {
+  background-color: #e0e0e0;
+  border-color: #ccc;
+  color: #333;
+}
+
+.history-chip span.text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px; /* Límite de ancho para el texto */
+}
+
+/* El botón de eliminar (la X) */
+.chip-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #999;
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chip-delete:hover {
+  background-color: #ffcdd2; /* Rojo suave fondo */
+  color: #d32f2f; /* Rojo fuerte texto */
+}
+
+/* Ajuste para el Textarea del Modal */
+#dynamicVarInput {
+  width: 100%;
+  min-height: 100px; /* Altura inicial generosa */
+  max-height: 300px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit; /* Heredar fuente para que no se vea monoespaciada */
+  resize: vertical; /* Permitir al usuario estirarlo */
+  box-sizing: border-box;
+}

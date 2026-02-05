@@ -1,6 +1,9 @@
+// sidepanel.js - Versión con Historial de Variables y Valores por Defecto
+
 let treeData = []; 
 let dragSrcId = null; 
 let editingId = null; 
+let variableHistory = {}; // Nuevo: Almacén para el historial
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
@@ -19,15 +22,15 @@ function renderTree(filterText = '') {
     
     if (filterText && !matchesFilter && node.type === 'prompt') return null;
 
-    // Contenedor principal (YA NO ES DRAGGABLE)
+    // Contenedor principal
     const div = document.createElement('div');
     div.className = 'node';
     div.dataset.id = node.id;
 
-    // ENCABEZADO: ESTE ES EL ELEMENTO ARRASTRABLE AHORA
+    // ENCABEZADO: ELEMENTO ARRASTRABLE
     const header = document.createElement('div');
     header.className = `node-header ${node.type}`;
-    header.setAttribute('draggable', 'true'); // <--- AQUI ESTA LA CLAVE
+    header.setAttribute('draggable', 'true'); 
     
     const icon = document.createElement('span');
     icon.className = 'material-icons icon';
@@ -46,10 +49,9 @@ function renderTree(filterText = '') {
     actions.appendChild(createActionBtn('edit', () => openModal(node.type, node.id)));
     actions.appendChild(createActionBtn('delete', () => deleteNode(node.id)));
 
-    // Usamos un spacer para asegurar que hay sitio donde agarrar
     const spacer = document.createElement('div');
     spacer.className = 'spacer';
-    spacer.innerText = " "; // Caracter invisible para dar cuerpo
+    spacer.innerText = " "; 
 
     header.append(icon, title, spacer, actions);
     div.appendChild(header);
@@ -66,7 +68,6 @@ function renderTree(filterText = '') {
       }
       div.appendChild(childrenContainer);
 
-      // Evento de click para abrir carpeta (ignorando si es un drag)
       header.addEventListener('click', (e) => {
         if (!e.target.closest('button') && !header.classList.contains('dragging')) {
           node.isOpen = !node.isOpen;
@@ -76,7 +77,6 @@ function renderTree(filterText = '') {
       });
     }
     
-    // Configurar eventos en el HEADER
     setupDragEvents(header, node);
     return div;
   }
@@ -90,21 +90,19 @@ function renderTree(filterText = '') {
 function createActionBtn(iconName, onClick) {
   const btn = document.createElement('button');
   btn.innerHTML = `<span class="material-icons" style="font-size:16px">${iconName}</span>`;
-  btn.onmousedown = (e) => e.stopPropagation(); // Evitar que el click del botón inicie drag
+  btn.onmousedown = (e) => e.stopPropagation(); 
   btn.onclick = (e) => { e.stopPropagation(); onClick(); };
   return btn;
 }
 
-// --- DRAG AND DROP (APLICADO AL HEADER) ---
+// --- DRAG AND DROP ---
 
 function setupDragEvents(element, node) {
-  
   element.addEventListener('dragstart', (e) => {
     dragSrcId = node.id;
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', node.id); // Necesario para Firefox/algunos navegadores
+    e.dataTransfer.setData('text/plain', node.id); 
     element.classList.add('dragging');
-    // Timeout para que el navegador cree la imagen fantasma antes de ocultar (estilo opcional)
     setTimeout(() => element.classList.add('ghost'), 0);
   });
 
@@ -114,40 +112,32 @@ function setupDragEvents(element, node) {
   });
 
   element.addEventListener('dragover', (e) => {
-    e.preventDefault(); // Permite soltar
-    
-    // Si estamos sobre el mismo elemento que arrastramos, no hacer nada
+    e.preventDefault(); 
     if (dragSrcId === node.id) return;
 
     const rect = element.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const height = rect.height;
 
-    // Limpiamos clases de ESTE elemento antes de recalcular
     element.classList.remove('drag-top', 'drag-bottom', 'drag-inside');
 
-    // Lógica de zonas
     if (node.type === 'folder') {
-      // Carpetas: 25% arriba, 50% centro (dentro), 25% abajo
       if (offsetY < height * 0.25) element.classList.add('drag-top');
       else if (offsetY > height * 0.75) element.classList.add('drag-bottom');
       else element.classList.add('drag-inside');
     } else {
-      // Prompts: 50% arriba, 50% abajo
       if (offsetY < height * 0.5) element.classList.add('drag-top');
       else element.classList.add('drag-bottom');
     }
   });
 
   element.addEventListener('dragleave', (e) => {
-    // Solo quitamos la clase si salimos realmente del elemento visual
     element.classList.remove('drag-top', 'drag-bottom', 'drag-inside');
   });
 
   element.addEventListener('drop', (e) => {
     e.stopPropagation();
     e.preventDefault();
-
     if (dragSrcId === node.id) return;
 
     let position = '';
@@ -172,7 +162,6 @@ function clearAllDragClasses() {
 function moveNode(srcId, targetId, position) {
   let nodeToMove = null;
   
-  // 1. Extraer
   const remove = (nodes) => {
     const idx = nodes.findIndex(n => n.id === srcId);
     if (idx > -1) {
@@ -189,7 +178,6 @@ function moveNode(srcId, targetId, position) {
 
   if (!nodeToMove) return;
 
-  // 2. Insertar
   if (position === 'inside') {
     const targetNode = findNode(treeData, targetId);
     if (targetNode && targetNode.children) {
@@ -197,7 +185,6 @@ function moveNode(srcId, targetId, position) {
       targetNode.isOpen = true; 
     }
   } else {
-    // Insertar antes o después
     const parentInfo = findParent(treeData, targetId);
     const siblings = parentInfo ? parentInfo.children : treeData;
     
@@ -223,24 +210,47 @@ function findParent(nodes, childId) {
   return null;
 }
 
-// --- RESTO DEL CÓDIGO (Sin cambios funcionales) ---
+// --- GESTIÓN DE VARIABLES Y PROMPTS (MEJORADA) ---
 
 async function handleInject(node) {
   let content = node.content;
-  const allMatches = [...content.matchAll(/{{(.*?)}}/g)];
-  const uniqueVars = [...new Set(allMatches.map(match => match[1]))];
+  
+  // Regex capturar {{Variable}} o {{Variable|Default}}
+  const regex = /{{(.*?)}}/g; 
+  const matches = [...content.matchAll(regex)];
+  
+  // Mapa para unicidad y guardar defaults
+  const uniqueVarsMap = new Map();
 
-  if (uniqueVars.length > 0) {
-    for (const varName of uniqueVars) {
-      const value = await askUserForValue(varName);
-      if (value !== null) {
-        content = content.replaceAll(`{{${varName}}}`, value);
-      } else {
-        return; 
-      }
+  matches.forEach(match => {
+    const rawContent = match[1]; 
+    const [name, defaultValue] = rawContent.split('|').map(s => s.trim());
+    
+    if (!uniqueVarsMap.has(name)) {
+      uniqueVarsMap.set(name, defaultValue || ""); 
+    }
+  });
+
+  if (uniqueVarsMap.size > 0) {
+    for (const [varName, defaultVal] of uniqueVarsMap) {
+      // Pedimos valor (pasando el default)
+      const value = await askUserForValue(varName, defaultVal);
+      
+      if (value === null) return; // Usuario canceló
+
+      // Guardar historial
+      saveToHistory(varName, value);
+
+      // Reemplazar globalmente manejando ambas sintaxis
+      const replaceRegex = new RegExp(`{{${varName}(\\|.*?)?}}`, 'g');
+      content = content.replace(replaceRegex, value);
     }
   }
 
+  // Guardar historial persistente
+  chrome.storage.local.set({ varHistory: variableHistory });
+
+  // Inyección
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     chrome.tabs.sendMessage(tab.id, { action: "injectPrompt", text: content })
@@ -251,28 +261,167 @@ async function handleInject(node) {
   }
 }
 
-function askUserForValue(varName) {
+// Función auxiliar para gestionar historial
+function saveToHistory(varName, value) {
+  if (!variableHistory[varName]) {
+    variableHistory[varName] = [];
+  }
+  // Evitar duplicados y poner al principio
+  variableHistory[varName] = variableHistory[varName].filter(v => v !== value);
+  variableHistory[varName].unshift(value);
+  // Limite de 5 items
+  if (variableHistory[varName].length > 5) {
+    variableHistory[varName] = variableHistory[varName].slice(0, 5);
+  }
+}
+
+// Modal Dinámico con Datalist
+
+function askUserForValue(varName, defaultValue) {
   return new Promise((resolve) => {
-    const modal = document.getElementById('varModal');
-    const title = document.getElementById('varNameTitle');
-    const input = document.getElementById('varInput');
-    const confirmBtn = document.getElementById('varConfirmBtn');
-    const cancelBtn = document.getElementById('varCancelBtn');
+    // Usamos el modal existente o creamos uno
+    let modal = document.getElementById('varModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'varModal';
+      document.body.appendChild(modal);
+    }
 
-    title.innerText = varName;
-    input.value = ''; 
-    modal.classList.remove('hidden');
-    input.focus();
+    // Función interna para renderizar los chips dinámicamente
+    // Esto nos permite refrescar la lista al borrar sin cerrar el modal
+    const renderChips = () => {
+      const historyOptions = variableHistory[varName] || [];
+      const container = document.getElementById('chipsContainer');
+      
+      if (!container) return; // Seguridad
 
-    const cleanup = () => {
-      modal.classList.add('hidden');
-      confirmBtn.onclick = null;
-      cancelBtn.onclick = null;
+      if (historyOptions.length === 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'flex';
+      container.innerHTML = `
+        <span style="font-size:11px; color:#999; width:100%; margin-bottom:2px;">Historial reciente:</span>
+        ${historyOptions.map((opt, index) => {
+          const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
+          const safeValue = opt.replace(/"/g, '&quot;'); 
+          
+          // Estructura: Texto + Botón X
+          return `
+            <div class="history-chip" title="${safeValue}">
+              <span class="text" data-value="${safeValue}">${shortText}</span>
+              <span class="chip-delete" data-index="${index}">×</span>
+            </div>`;
+        }).join('')}
+      `;
+
+      // Re-asignar eventos a los nuevos elementos
+      
+      // 1. Evento Clic en el TEXTO (Rellenar)
+      container.querySelectorAll('.text').forEach(span => {
+        span.onclick = (e) => {
+          e.stopPropagation(); // Evitar conflictos
+          const input = document.getElementById('dynamicVarInput');
+          input.value = span.getAttribute('data-value');
+          input.focus();
+          // Efecto visual flash
+          input.style.backgroundColor = '#f0fff4';
+          setTimeout(() => input.style.backgroundColor = 'white', 300);
+        };
+      });
+
+      // 2. Evento Clic en la X (Borrar)
+      container.querySelectorAll('.chip-delete').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation(); // IMPORTANTE: Que no active el rellenado
+          const idx = parseInt(btn.getAttribute('data-index'));
+          
+          // Borrar del array en memoria
+          variableHistory[varName].splice(idx, 1);
+          
+          // Guardar cambios en Chrome Storage
+          chrome.storage.local.set({ varHistory: variableHistory });
+          
+          // Volver a pintar la lista
+          renderChips();
+        };
+      });
     };
-    confirmBtn.onclick = () => { const val = input.value; cleanup(); resolve(val); };
-    cancelBtn.onclick = () => { cleanup(); resolve(null); };
+
+    // Estructura HTML inicial del Modal
+    modal.innerHTML = `
+      <div class="modal-content" style="background:white; padding:20px; border-radius:8px; width:90%; max-width:500px; box-shadow:0 4px 15px rgba(0,0,0,0.2); display:flex; flex-direction:column;">
+        <h3 style="margin-top:0">Variable: <span style="color:#10a37f; background:#e0f2f1; padding:2px 6px; border-radius:4px;">${varName}</span></h3>
+        <p style="margin-bottom:10px; color:#666; font-size:13px;">Introduce o pega el contenido para esta variable:</p>
+        
+        <div id="chipsContainer" class="history-container"></div>
+
+        <textarea id="dynamicVarInput" 
+                  placeholder="${defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...'}"
+                  spellcheck="false">${defaultValue || ''}</textarea>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button id="dynamicCancelBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#eee;">Cancelar</button>
+          <button id="dynamicConfirmBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#10a37f; color:white;">Insertar</button>
+        </div>
+        <div style="font-size:10px; color:#aaa; margin-top:5px; text-align:right;">Ctrl + Enter para insertar</div>
+      </div>
+    `;
+
+    // Estilos del modal
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.background = 'rgba(0,0,0,0.5)';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.zIndex = '1000';
+    
+    // Inicializar lógica
+    const input = document.getElementById('dynamicVarInput');
+    const confirmBtn = document.getElementById('dynamicConfirmBtn');
+    const cancelBtn = document.getElementById('dynamicCancelBtn');
+
+    // Pintar los chips por primera vez
+    renderChips();
+
+    // Focus inicial
+    input.focus();
+    if(input.value) input.select();
+
+    const submit = () => {
+      let val = input.value.trim();
+      if (val === "" && defaultValue) val = defaultValue;
+      
+      if (!val && !defaultValue) {
+        input.style.borderColor = "red";
+        return;
+      }
+      modal.style.display = 'none';
+      resolve(val);
+    };
+
+    const cancel = () => {
+      modal.style.display = 'none';
+      resolve(null);
+    };
+
+    confirmBtn.onclick = submit;
+    cancelBtn.onclick = cancel;
+    
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
+      if (e.key === 'Escape') cancel();
+    };
   });
 }
+
+// --- RESTO DE FUNCIONES ---
 
 function addNewItem(type) { editingId = null; openModal(type); }
 
@@ -324,9 +473,12 @@ function findNode(nodes, id) {
 }
 
 async function loadData() {
-  const result = await chrome.storage.local.get(['promptTree']);
+  // Cargamos árbol y ahora también el historial
+  const result = await chrome.storage.local.get(['promptTree', 'varHistory']);
   treeData = result.promptTree || [];
+  variableHistory = result.varHistory || {};
 }
+
 function saveData() { chrome.storage.local.set({ promptTree: treeData }); }
 function copyToClipboard(text) { navigator.clipboard.writeText(text); }
 
@@ -354,6 +506,8 @@ function setupEventListeners() {
     };
     reader.readAsText(file);
   };
+  
+  // Modal de edición de items
   const modal = document.getElementById('modal');
   document.getElementById('saveBtn').onclick = () => {
     const title = document.getElementById('itemTitle').value;
