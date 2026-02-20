@@ -215,42 +215,60 @@ function findParent(nodes, childId) {
 async function handleInject(node) {
   let content = node.content;
   
-  // Regex capturar {{Variable}} o {{Variable|Default}}
+  // Regex para capturar {{Variable}} o {{Variable|Default}}
   const regex = /{{(.*?)}}/g; 
   const matches = [...content.matchAll(regex)];
   
-  // Mapa para unicidad y guardar defaults
+  // Mapa para unicidad
   const uniqueVarsMap = new Map();
-
   matches.forEach(match => {
     const rawContent = match[1]; 
     const [name, defaultValue] = rawContent.split('|').map(s => s.trim());
-    
     if (!uniqueVarsMap.has(name)) {
       uniqueVarsMap.set(name, defaultValue || ""); 
     }
   });
 
-  if (uniqueVarsMap.size > 0) {
-    for (const [varName, defaultVal] of uniqueVarsMap) {
-      // Pedimos valor (pasando el default)
-      const value = await askUserForValue(varName, defaultVal);
+  // Convertimos el mapa a un Array para poder navegar hacia adelante y atrás
+  const varsArray = Array.from(uniqueVarsMap.entries());
+  // Objeto para guardar temporalmente las respuestas del usuario
+  const userAnswers = {};
+
+  if (varsArray.length > 0) {
+    let i = 0;
+    while (i < varsArray.length) {
+      const [varName, defaultVal] = varsArray[i];
       
-      if (value === null) return; // Usuario canceló
+      // Si estamos volviendo atrás, mostramos lo que el usuario ya había escrito.
+      // Si es la primera vez, mostramos el valor por defecto.
+      const currentVal = userAnswers[varName] !== undefined ? userAnswers[varName] : defaultVal;
 
-      // Guardar historial
-      saveToHistory(varName, value);
+      // Pedimos el valor (pasamos también el índice para saber si mostramos el botón "Atrás")
+      const result = await askUserForValue(varName, currentVal, i, varsArray.length);
+      
+      if (result.action === 'cancel') {
+        return; // Usuario canceló todo el proceso
+      } else if (result.action === 'back') {
+        i--; // Retrocedemos una variable
+      } else if (result.action === 'next') {
+        // Guardamos la respuesta, el historial, y avanzamos
+        userAnswers[varName] = result.value;
+        saveToHistory(varName, result.value);
+        i++; 
+      }
+    }
 
-      // Reemplazar globalmente manejando ambas sintaxis
+    // Una vez completadas TODAS las variables, hacemos el reemplazo en el texto
+    for (const [varName, value] of Object.entries(userAnswers)) {
       const replaceRegex = new RegExp(`{{${varName}(\\|.*?)?}}`, 'g');
       content = content.replace(replaceRegex, value);
     }
+    
+    // Guardamos el historial persistente en Chrome
+    chrome.storage.local.set({ varHistory: variableHistory });
   }
 
-  // Guardar historial persistente
-  chrome.storage.local.set({ varHistory: variableHistory });
-
-  // Inyección
+  // Inyección final
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     chrome.tabs.sendMessage(tab.id, { action: "injectPrompt", text: content })
@@ -277,9 +295,8 @@ function saveToHistory(varName, value) {
 
 // Modal Dinámico con Datalist
 
-function askUserForValue(varName, defaultValue) {
+function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
   return new Promise((resolve) => {
-    // Usamos el modal existente o creamos uno
     let modal = document.getElementById('varModal');
     if (!modal) {
       modal = document.createElement('div');
@@ -287,13 +304,10 @@ function askUserForValue(varName, defaultValue) {
       document.body.appendChild(modal);
     }
 
-    // Función interna para renderizar los chips dinámicamente
-    // Esto nos permite refrescar la lista al borrar sin cerrar el modal
     const renderChips = () => {
       const historyOptions = variableHistory[varName] || [];
       const container = document.getElementById('chipsContainer');
-      
-      if (!container) return; // Seguridad
+      if (!container) return; 
 
       if (historyOptions.length === 0) {
         container.innerHTML = '';
@@ -307,8 +321,6 @@ function askUserForValue(varName, defaultValue) {
         ${historyOptions.map((opt, index) => {
           const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
           const safeValue = opt.replace(/"/g, '&quot;'); 
-          
-          // Estructura: Texto + Botón X
           return `
             <div class="history-chip" title="${safeValue}">
               <span class="text" data-value="${safeValue}">${shortText}</span>
@@ -317,44 +329,44 @@ function askUserForValue(varName, defaultValue) {
         }).join('')}
       `;
 
-      // Re-asignar eventos a los nuevos elementos
-      
-      // 1. Evento Clic en el TEXTO (Rellenar)
       container.querySelectorAll('.text').forEach(span => {
         span.onclick = (e) => {
-          e.stopPropagation(); // Evitar conflictos
+          e.stopPropagation(); 
           const input = document.getElementById('dynamicVarInput');
           input.value = span.getAttribute('data-value');
           input.focus();
-          // Efecto visual flash
           input.style.backgroundColor = '#f0fff4';
           setTimeout(() => input.style.backgroundColor = 'white', 300);
         };
       });
 
-      // 2. Evento Clic en la X (Borrar)
       container.querySelectorAll('.chip-delete').forEach(btn => {
         btn.onclick = (e) => {
-          e.stopPropagation(); // IMPORTANTE: Que no active el rellenado
+          e.stopPropagation(); 
           const idx = parseInt(btn.getAttribute('data-index'));
-          
-          // Borrar del array en memoria
           variableHistory[varName].splice(idx, 1);
-          
-          // Guardar cambios en Chrome Storage
           chrome.storage.local.set({ varHistory: variableHistory });
-          
-          // Volver a pintar la lista
           renderChips();
         };
       });
     };
 
-    // Estructura HTML inicial del Modal
+    // Textos dinámicos para los botones según el paso
+    const isLastStep = currentIndex === totalVars - 1;
+    const confirmText = isLastStep ? 'Insertar' : 'Siguiente';
+    const backBtnHTML = currentIndex > 0 
+      ? `<button id="dynamicBackBtn" style="padding:8px 16px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white; color:#333;">← Atrás</button>` 
+      : `<div></div>`; // Div vacío para mantener el espaciado flex
+
     modal.innerHTML = `
       <div class="modal-content" style="background:white; padding:20px; border-radius:8px; width:90%; max-width:500px; box-shadow:0 4px 15px rgba(0,0,0,0.2); display:flex; flex-direction:column;">
-        <h3 style="margin-top:0">Variable: <span style="color:#10a37f; background:#e0f2f1; padding:2px 6px; border-radius:4px;">${varName}</span></h3>
-        <p style="margin-bottom:10px; color:#666; font-size:13px;">Introduce o pega el contenido para esta variable:</p>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0;">
+          <h3 style="margin:0;">Variable: <span style="color:#10a37f; background:#e0f2f1; padding:2px 6px; border-radius:4px;">${varName}</span></h3>
+          <span style="font-size:12px; color:#999; font-weight:bold;">Paso ${currentIndex + 1} de ${totalVars}</span>
+        </div>
+        
+        <p style="margin:10px 0; color:#666; font-size:13px;">Introduce o pega el contenido para esta variable:</p>
         
         <div id="chipsContainer" class="history-container"></div>
 
@@ -362,15 +374,19 @@ function askUserForValue(varName, defaultValue) {
                   placeholder="${defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...'}"
                   spellcheck="false">${defaultValue || ''}</textarea>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <button id="dynamicCancelBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#eee;">Cancelar</button>
-          <button id="dynamicConfirmBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#10a37f; color:white;">Insertar</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+          ${backBtnHTML}
+          
+          <div style="display:flex; gap:10px;">
+            <button id="dynamicCancelBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#eee;">Cancelar</button>
+            <button id="dynamicConfirmBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#10a37f; color:white;">${confirmText}</button>
+          </div>
         </div>
-        <div style="font-size:10px; color:#aaa; margin-top:5px; text-align:right;">Ctrl + Enter para insertar</div>
+        
+        <div style="font-size:10px; color:#aaa; margin-top:8px; text-align:right;">Ctrl + Enter para ${isLastStep ? 'insertar' : 'avanzar'}</div>
       </div>
     `;
 
-    // Estilos del modal
     modal.style.display = 'flex';
     modal.style.position = 'fixed';
     modal.style.top = '0';
@@ -382,15 +398,13 @@ function askUserForValue(varName, defaultValue) {
     modal.style.alignItems = 'center';
     modal.style.zIndex = '1000';
     
-    // Inicializar lógica
     const input = document.getElementById('dynamicVarInput');
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
     const cancelBtn = document.getElementById('dynamicCancelBtn');
+    const backBtn = document.getElementById('dynamicBackBtn');
 
-    // Pintar los chips por primera vez
     renderChips();
 
-    // Focus inicial
     input.focus();
     if(input.value) input.select();
 
@@ -403,16 +417,22 @@ function askUserForValue(varName, defaultValue) {
         return;
       }
       modal.style.display = 'none';
-      resolve(val);
+      resolve({ action: 'next', value: val }); // Ahora devuelve un objeto de acción
     };
 
     const cancel = () => {
       modal.style.display = 'none';
-      resolve(null);
+      resolve({ action: 'cancel' });
+    };
+
+    const goBack = () => {
+      modal.style.display = 'none';
+      resolve({ action: 'back' });
     };
 
     confirmBtn.onclick = submit;
     cancelBtn.onclick = cancel;
+    if (backBtn) backBtn.onclick = goBack;
     
     input.onkeydown = (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
