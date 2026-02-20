@@ -3,7 +3,8 @@
 let treeData = []; 
 let dragSrcId = null; 
 let editingId = null; 
-let variableHistory = {}; // Nuevo: Almacén para el historial
+let variableHistory = {}; //Almacén para el historial
+let lastModifiedTimestamp = null; // Marca de tiempo
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
@@ -493,13 +494,46 @@ function findNode(nodes, id) {
 }
 
 async function loadData() {
-  // Cargamos árbol y ahora también el historial
-  const result = await chrome.storage.local.get(['promptTree', 'varHistory']);
+  // Ahora también pedimos lastModified
+  const result = await chrome.storage.local.get(['promptTree', 'varHistory', 'lastModified']);
   treeData = result.promptTree || [];
   variableHistory = result.varHistory || {};
+  lastModifiedTimestamp = result.lastModified || null;
+  
+  updateLastModifiedUI(); // Actualizamos el texto al cargar
 }
 
-function saveData() { chrome.storage.local.set({ promptTree: treeData }); }
+function saveData() { 
+  // Cada vez que guardamos, actualizamos la fecha al instante actual
+  lastModifiedTimestamp = Date.now();
+  
+  chrome.storage.local.set({ 
+    promptTree: treeData,
+    varHistory: variableHistory, // Si lo tienes implementado
+    lastModified: lastModifiedTimestamp // Guardamos la marca de tiempo
+  });
+  
+  updateLastModifiedUI(); // Refrescamos el texto en pantalla
+}
+// NUEVA FUNCIÓN: Para formatear y mostrar la fecha
+function updateLastModifiedUI() {
+  const displayElement = document.getElementById('lastModified');
+  if (!displayElement) return;
+
+  if (!lastModifiedTimestamp) {
+    displayElement.innerText = "Última actualización: Nunca";
+    return;
+  }
+
+  // Formateamos la fecha al estilo local (ej: 20/2/2026, 16:24)
+  const dateObj = new Date(lastModifiedTimestamp);
+  const formattedDate = dateObj.toLocaleString('es-ES', { 
+    day: '2-digit', month: '2-digit', year: 'numeric', 
+    hour: '2-digit', minute: '2-digit' 
+  });
+
+  displayElement.innerText = `Última actualización: ${formattedDate}`;
+}
 function copyToClipboard(text) { navigator.clipboard.writeText(text); }
 
 function setupEventListeners() {
