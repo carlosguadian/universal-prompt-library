@@ -297,13 +297,94 @@ textarea { height: 150px; resize: vertical; font-size: 13px; line-height: 1.4; }
 /* Ajuste para el Textarea del Modal */
 #dynamicVarInput {
   width: 100%;
-  min-height: 100px; /* Altura inicial generosa */
+  min-height: 100px;
   max-height: 300px;
   padding: 10px;
   margin-bottom: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-family: inherit; /* Heredar fuente para que no se vea monoespaciada */
-  resize: vertical; /* Permitir al usuario estirarlo */
+  font-family: inherit;
+  resize: vertical;
   box-sizing: border-box;
+}
+
+/* --- VAR MODAL (estructura fija) --- */
+.var-modal-content {
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+}
+.var-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+.var-modal-header h3 { margin: 0; }
+.var-step-indicator {
+  font-size: 12px;
+  color: #999;
+  font-weight: bold;
+}
+.var-modal-description {
+  margin: 10px 0;
+  color: #666;
+  font-size: 13px;
+}
+.var-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+.var-modal-actions-right {
+  display: flex;
+  gap: 10px;
+}
+.var-btn-back {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  background: white;
+  color: #333;
+}
+.var-btn-back.hidden { visibility: hidden; }
+.var-btn-confirm {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #10a37f;
+  color: white;
+}
+.var-btn-confirm:hover { background: #0d8a6a; }
+.var-modal-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 8px;
+  text-align: right;
+}
+
+/* Toast de feedback */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10a37f;
+  color: white;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 9999;
+  transition: opacity 0.3s;
+}
+
+/* Historial label */
+.history-label {
+  font-size: 11px;
+  color: #999;
+  width: 100%;
+  margin-bottom: 2px;
 }
