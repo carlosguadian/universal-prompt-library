@@ -211,6 +211,11 @@ function findParent(nodes, childId) {
   return null;
 }
 
+// --- UTILIDADES ---
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // --- GESTIÓN DE VARIABLES Y PROMPTS (MEJORADA) ---
 
 async function handleInject(node) {
@@ -261,7 +266,7 @@ async function handleInject(node) {
 
     // Una vez completadas TODAS las variables, hacemos el reemplazo en el texto
     for (const [varName, value] of Object.entries(userAnswers)) {
-      const replaceRegex = new RegExp(`{{${varName}(\\|.*?)?}}`, 'g');
+      const replaceRegex = new RegExp(`{{${escapeRegex(varName)}(\\|.*?)?}}`, 'g');
       content = content.replace(replaceRegex, value);
     }
     
@@ -308,47 +313,56 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     const renderChips = () => {
       const historyOptions = variableHistory[varName] || [];
       const container = document.getElementById('chipsContainer');
-      if (!container) return; 
+      if (!container) return;
+
+      // Limpiar contenido anterior de forma segura
+      container.innerHTML = '';
 
       if (historyOptions.length === 0) {
-        container.innerHTML = '';
         container.style.display = 'none';
         return;
       }
 
       container.style.display = 'flex';
-      container.innerHTML = `
-        <span style="font-size:11px; color:#999; width:100%; margin-bottom:2px;">Historial reciente:</span>
-        ${historyOptions.map((opt, index) => {
-          const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
-          const safeValue = opt.replace(/"/g, '&quot;'); 
-          return `
-            <div class="history-chip" title="${safeValue}">
-              <span class="text" data-value="${safeValue}">${shortText}</span>
-              <span class="chip-delete" data-index="${index}">×</span>
-            </div>`;
-        }).join('')}
-      `;
 
-      container.querySelectorAll('.text').forEach(span => {
-        span.onclick = (e) => {
-          e.stopPropagation(); 
+      // Label de "Historial reciente"
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:11px; color:#999; width:100%; margin-bottom:2px;';
+      label.textContent = 'Historial reciente:';
+      container.appendChild(label);
+
+      // Crear chips de forma segura (sin innerHTML)
+      historyOptions.forEach((opt, index) => {
+        const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
+
+        const chip = document.createElement('div');
+        chip.className = 'history-chip';
+        chip.title = opt; // title se asigna como texto, no HTML
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'text';
+        textSpan.textContent = shortText; // textContent es seguro contra XSS
+        textSpan.onclick = (e) => {
+          e.stopPropagation();
           const input = document.getElementById('dynamicVarInput');
-          input.value = span.getAttribute('data-value');
+          input.value = opt; // Usamos el valor original directamente
           input.focus();
           input.style.backgroundColor = '#f0fff4';
           setTimeout(() => input.style.backgroundColor = 'white', 300);
         };
-      });
 
-      container.querySelectorAll('.chip-delete').forEach(btn => {
-        btn.onclick = (e) => {
-          e.stopPropagation(); 
-          const idx = parseInt(btn.getAttribute('data-index'));
-          variableHistory[varName].splice(idx, 1);
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'chip-delete';
+        deleteBtn.textContent = '×';
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          variableHistory[varName].splice(index, 1);
           chrome.storage.local.set({ varHistory: variableHistory });
           renderChips();
         };
+
+        chip.append(textSpan, deleteBtn);
+        container.appendChild(chip);
       });
     };
 
