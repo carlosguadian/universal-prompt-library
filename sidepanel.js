@@ -8,9 +8,34 @@ let lastModifiedTimestamp = null; // Marca de tiempo
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
+  loadDarkMode();
   renderTree();
   setupEventListeners();
 });
+
+// --- DARK MODE ---
+function loadDarkMode() {
+  chrome.storage.local.get('darkMode', (result) => {
+    if (result.darkMode) {
+      document.body.classList.add('dark-mode');
+      updateDarkModeIcon(true);
+    }
+  });
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  chrome.storage.local.set({ darkMode: isDark });
+  updateDarkModeIcon(isDark);
+}
+
+function updateDarkModeIcon(isDark) {
+  const btn = document.getElementById('darkModeBtn');
+  if (btn) {
+    btn.querySelector('.material-icons').innerText = isDark ? 'light_mode' : 'dark_mode';
+    btn.title = isDark ? 'Modo claro' : 'Modo oscuro';
+  }
+}
 
 // --- RENDERIZADO ---
 function renderTree(filterText = '') {
@@ -39,14 +64,27 @@ function renderTree(filterText = '') {
     
     const title = document.createElement('span');
     title.innerText = node.title;
-    
+
     const actions = document.createElement('div');
     actions.className = 'node-actions';
     
     if (node.type === 'prompt') {
       actions.appendChild(createActionBtn('send', () => handleInject(node)));
-      actions.appendChild(createActionBtn('content_copy', () => copyToClipboard(node.content)));
+      actions.appendChild(createActionBtn('content_copy', () => {
+        copyToClipboard(node.content);
+        node.useCount = (node.useCount || 0) + 1;
+        node.lastUsed = Date.now();
+        saveData();
+      }));
     }
+    // Botón de favorito (estrella)
+    const favBtn = createActionBtn(
+      node.isFavorite ? 'star' : 'star_border',
+      () => toggleFavorite(node.id)
+    );
+    if (node.isFavorite) favBtn.classList.add('favorite-active');
+    actions.appendChild(favBtn);
+    actions.appendChild(createActionBtn('file_copy', () => duplicateNode(node.id)));
     actions.appendChild(createActionBtn('edit', () => openModal(node.type, node.id)));
     actions.appendChild(createActionBtn('delete', () => deleteNode(node.id)));
 
@@ -54,8 +92,41 @@ function renderTree(filterText = '') {
     spacer.className = 'spacer';
     spacer.innerText = " "; 
 
-    header.append(icon, title, spacer, actions);
+    // Montar header: icono, título, [estrella favorito], [badge uso], spacer, acciones
+    const headerElements = [icon, title];
+
+    if (node.isFavorite) {
+      const favIcon = document.createElement('span');
+      favIcon.className = 'material-icons favorite-indicator';
+      favIcon.innerText = 'star';
+      headerElements.push(favIcon);
+    }
+
+    if (node.type === 'prompt' && node.useCount > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'use-count-badge';
+      badge.title = `Usado ${node.useCount} ${node.useCount === 1 ? 'vez' : 'veces'}${node.lastUsed ? ' · Último: ' + new Date(node.lastUsed).toLocaleDateString('es-ES') : ''}`;
+      badge.textContent = node.useCount;
+      headerElements.push(badge);
+    }
+
+    headerElements.push(spacer, actions);
+    header.append(...headerElements);
     div.appendChild(header);
+
+    // Preview de contenido para prompts
+    if (node.type === 'prompt' && node.content) {
+      const preview = document.createElement('div');
+      preview.className = 'prompt-preview';
+      preview.textContent = node.content.length > 200 ? node.content.substring(0, 200) + '…' : node.content;
+      div.appendChild(preview);
+
+      header.addEventListener('click', (e) => {
+        if (!e.target.closest('button')) {
+          preview.classList.toggle('open');
+        }
+      });
+    }
 
     if (node.type === 'folder') {
       const childrenContainer = document.createElement('div');
@@ -84,7 +155,9 @@ function renderTree(filterText = '') {
     return div;
   }
 
-  treeData.forEach(node => {
+  // Ordenar: favoritos primero (manteniendo orden relativo)
+  const sortedData = [...treeData].sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+  sortedData.forEach(node => {
     const el = createNodeElement(node);
     if(el) container.appendChild(el);
   });
@@ -276,6 +349,11 @@ async function handleInject(node) {
     chrome.storage.local.set({ varHistory: variableHistory });
   }
 
+  // Tracking de uso
+  node.useCount = (node.useCount || 0) + 1;
+  node.lastUsed = Date.now();
+  saveData();
+
   // Inyección final
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
@@ -337,8 +415,8 @@ function renderChips(varName) {
       const input = document.getElementById('dynamicVarInput');
       input.value = opt;
       input.focus();
-      input.style.backgroundColor = '#f0fff4';
-      setTimeout(() => input.style.backgroundColor = 'white', 300);
+      input.style.backgroundColor = document.body.classList.contains('dark-mode') ? '#0a3d2e' : '#f0fff4';
+      setTimeout(() => input.style.backgroundColor = '', 300);
     };
 
     const deleteBtn = document.createElement('span');
@@ -455,6 +533,46 @@ function saveItem(title, content, type) {
   renderTree();
 }
 
+function toggleFavorite(id) {
+  const node = findNode(treeData, id);
+  if (!node) return;
+  node.isFavorite = !node.isFavorite;
+  saveData();
+  renderTree();
+  showToast(node.isFavorite ? '⭐ Añadido a favoritos' : 'Eliminado de favoritos');
+}
+
+function duplicateNode(id) {
+  const original = findNode(treeData, id);
+  if (!original) return;
+
+  const deepClone = (node, isRoot) => {
+    const clone = {
+      id: crypto.randomUUID(),
+      type: node.type,
+      title: isRoot ? node.title + ' (copia)' : node.title,
+      content: node.content || null,
+      children: node.children ? node.children.map(c => deepClone(c, false)) : null,
+      isOpen: node.isOpen || false
+    };
+    // No copiar useCount/lastUsed (se resetean), pero sí isFavorite
+    if (node.isFavorite) clone.isFavorite = true;
+    return clone;
+  };
+
+  const clone = deepClone(original, true);
+
+  // Insertar justo después del original en el mismo nivel
+  const parentNode = findParent(treeData, id);
+  const siblings = parentNode ? parentNode.children : treeData;
+  const idx = siblings.findIndex(n => n.id === id);
+  siblings.splice(idx + 1, 0, clone);
+
+  saveData();
+  renderTree();
+  showToast('✓ Duplicado');
+}
+
 function deleteNode(id) {
   if(confirm('¿Eliminar este elemento?')) {
     const remove = (nodes) => {
@@ -521,13 +639,17 @@ function updateLastModifiedUI() {
 
   displayElement.innerText = `Última actualización: ${formattedDate}`;
 }
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+}
+
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = '✓ Copiado';
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+    showToast('✓ Copiado');
   }).catch(() => {
     alert('No se pudo copiar al portapapeles.');
   });
@@ -537,6 +659,7 @@ function setupEventListeners() {
   document.getElementById('addFolderBtn').onclick = () => addNewItem('folder');
   document.getElementById('addPromptBtn').onclick = () => addNewItem('prompt');
   document.getElementById('searchInput').addEventListener('input', (e) => renderTree(e.target.value));
+  document.getElementById('darkModeBtn').onclick = toggleDarkMode;
   document.getElementById('exportBtn').onclick = () => {
     const exportData = {
       prompts: treeData,
