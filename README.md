@@ -3,7 +3,7 @@
 A powerful, local-first browser extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, Perplexity, and more).
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.1.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-supported-blue.svg)
 ![Firefox](https://img.shields.io/badge/firefox-supported-orange.svg)
 
