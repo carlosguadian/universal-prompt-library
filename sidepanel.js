@@ -166,8 +166,23 @@ function renderTree(filterText = '') {
 function createActionBtn(iconName, onClick) {
   const btn = document.createElement('button');
   btn.innerHTML = `<span class="material-icons" style="font-size:16px">${iconName}</span>`;
-  btn.onmousedown = (e) => e.stopPropagation(); 
-  btn.onclick = (e) => { e.stopPropagation(); onClick(); };
+  btn.onmousedown = (e) => e.stopPropagation();
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    try {
+      const result = onClick();
+      // Si es una Promise (función async), atrapar errores
+      if (result && typeof result.catch === 'function') {
+        result.catch(err => {
+          console.error('Error en acción:', err);
+          alert('Error: ' + err.message);
+        });
+      }
+    } catch (err) {
+      console.error('Error en acción:', err);
+      alert('Error: ' + err.message);
+    }
+  };
   return btn;
 }
 
