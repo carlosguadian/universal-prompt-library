@@ -72,8 +72,10 @@ function renderTree(filterText = '') {
       header.addEventListener('click', (e) => {
         if (!e.target.closest('button') && !header.classList.contains('dragging')) {
           node.isOpen = !node.isOpen;
+          // Actualización parcial: solo toggle del contenedor hijo + icono
+          childrenContainer.classList.toggle('open', node.isOpen);
+          icon.innerText = node.isOpen ? 'folder_open' : 'folder';
           saveData();
-          renderTree(filterText);
         }
       });
     }
@@ -299,160 +301,131 @@ function saveToHistory(varName, value) {
   }
 }
 
-// Modal Dinámico con Datalist
+// --- MODAL DE VARIABLES (Estructura fija en HTML, solo se actualizan valores) ---
+
+function renderChips(varName) {
+  const historyOptions = variableHistory[varName] || [];
+  const container = document.getElementById('chipsContainer');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (historyOptions.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+
+  const label = document.createElement('span');
+  label.className = 'history-label';
+  label.textContent = 'Historial reciente:';
+  container.appendChild(label);
+
+  historyOptions.forEach((opt, index) => {
+    const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
+
+    const chip = document.createElement('div');
+    chip.className = 'history-chip';
+    chip.title = opt;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'text';
+    textSpan.textContent = shortText;
+    textSpan.onclick = (e) => {
+      e.stopPropagation();
+      const input = document.getElementById('dynamicVarInput');
+      input.value = opt;
+      input.focus();
+      input.style.backgroundColor = '#f0fff4';
+      setTimeout(() => input.style.backgroundColor = 'white', 300);
+    };
+
+    const deleteBtn = document.createElement('span');
+    deleteBtn.className = 'chip-delete';
+    deleteBtn.textContent = '×';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      variableHistory[varName].splice(index, 1);
+      chrome.storage.local.set({ varHistory: variableHistory });
+      renderChips(varName);
+    };
+
+    chip.append(textSpan, deleteBtn);
+    container.appendChild(chip);
+  });
+}
 
 function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
   return new Promise((resolve) => {
-    let modal = document.getElementById('varModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'varModal';
-      document.body.appendChild(modal);
-    }
-
-    const renderChips = () => {
-      const historyOptions = variableHistory[varName] || [];
-      const container = document.getElementById('chipsContainer');
-      if (!container) return;
-
-      // Limpiar contenido anterior de forma segura
-      container.innerHTML = '';
-
-      if (historyOptions.length === 0) {
-        container.style.display = 'none';
-        return;
-      }
-
-      container.style.display = 'flex';
-
-      // Label de "Historial reciente"
-      const label = document.createElement('span');
-      label.style.cssText = 'font-size:11px; color:#999; width:100%; margin-bottom:2px;';
-      label.textContent = 'Historial reciente:';
-      container.appendChild(label);
-
-      // Crear chips de forma segura (sin innerHTML)
-      historyOptions.forEach((opt, index) => {
-        const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
-
-        const chip = document.createElement('div');
-        chip.className = 'history-chip';
-        chip.title = opt; // title se asigna como texto, no HTML
-
-        const textSpan = document.createElement('span');
-        textSpan.className = 'text';
-        textSpan.textContent = shortText; // textContent es seguro contra XSS
-        textSpan.onclick = (e) => {
-          e.stopPropagation();
-          const input = document.getElementById('dynamicVarInput');
-          input.value = opt; // Usamos el valor original directamente
-          input.focus();
-          input.style.backgroundColor = '#f0fff4';
-          setTimeout(() => input.style.backgroundColor = 'white', 300);
-        };
-
-        const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'chip-delete';
-        deleteBtn.textContent = '×';
-        deleteBtn.onclick = (e) => {
-          e.stopPropagation();
-          variableHistory[varName].splice(index, 1);
-          chrome.storage.local.set({ varHistory: variableHistory });
-          renderChips();
-        };
-
-        chip.append(textSpan, deleteBtn);
-        container.appendChild(chip);
-      });
-    };
-
-    // Textos dinámicos para los botones según el paso
+    const modal = document.getElementById('varModal');
     const isLastStep = currentIndex === totalVars - 1;
-    const confirmText = isLastStep ? 'Insertar' : 'Siguiente';
-    const backBtnHTML = currentIndex > 0 
-      ? `<button id="dynamicBackBtn" style="padding:8px 16px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white; color:#333;">← Atrás</button>` 
-      : `<div></div>`; // Div vacío para mantener el espaciado flex
 
-    modal.innerHTML = `
-      <div class="modal-content" style="background:white; padding:20px; border-radius:8px; width:90%; max-width:500px; box-shadow:0 4px 15px rgba(0,0,0,0.2); display:flex; flex-direction:column;">
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0;">
-          <h3 style="margin:0;">Variable: <span style="color:#10a37f; background:#e0f2f1; padding:2px 6px; border-radius:4px;">${varName}</span></h3>
-          <span style="font-size:12px; color:#999; font-weight:bold;">Paso ${currentIndex + 1} de ${totalVars}</span>
-        </div>
-        
-        <p style="margin:10px 0; color:#666; font-size:13px;">Introduce o pega el contenido para esta variable:</p>
-        
-        <div id="chipsContainer" class="history-container"></div>
+    // Actualizar contenido dinámico (sin recrear estructura)
+    document.getElementById('varNameTitle').textContent = varName;
+    document.getElementById('varStepIndicator').textContent = `Paso ${currentIndex + 1} de ${totalVars}`;
 
-        <textarea id="dynamicVarInput" 
-                  placeholder="${defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...'}"
-                  spellcheck="false">${defaultValue || ''}</textarea>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-          ${backBtnHTML}
-          
-          <div style="display:flex; gap:10px;">
-            <button id="dynamicCancelBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#eee;">Cancelar</button>
-            <button id="dynamicConfirmBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#10a37f; color:white;">${confirmText}</button>
-          </div>
-        </div>
-        
-        <div style="font-size:10px; color:#aaa; margin-top:8px; text-align:right;">Ctrl + Enter para ${isLastStep ? 'insertar' : 'avanzar'}</div>
-      </div>
-    `;
-
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.background = 'rgba(0,0,0,0.5)';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.zIndex = '1000';
-    
     const input = document.getElementById('dynamicVarInput');
+    input.value = defaultValue || '';
+    input.placeholder = defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...';
+    input.style.borderColor = '';
+
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
-    const cancelBtn = document.getElementById('dynamicCancelBtn');
+    confirmBtn.textContent = isLastStep ? 'Insertar' : 'Siguiente';
+
     const backBtn = document.getElementById('dynamicBackBtn');
+    backBtn.classList.toggle('hidden', currentIndex === 0);
 
-    renderChips();
+    document.getElementById('varHintAction').textContent = isLastStep ? 'insertar' : 'avanzar';
 
+    renderChips(varName);
+
+    // Mostrar modal
+    modal.classList.remove('hidden');
     input.focus();
-    if(input.value) input.select();
+    if (input.value) input.select();
 
+    // Handlers (reasignar para limpiar referencias anteriores)
     const submit = () => {
       let val = input.value.trim();
-      if (val === "" && defaultValue) val = defaultValue;
-      
+      if (val === '' && defaultValue) val = defaultValue;
       if (!val && !defaultValue) {
-        input.style.borderColor = "red";
+        input.style.borderColor = 'red';
         return;
       }
-      modal.style.display = 'none';
-      resolve({ action: 'next', value: val }); // Ahora devuelve un objeto de acción
+      modal.classList.add('hidden');
+      cleanup();
+      resolve({ action: 'next', value: val });
     };
 
     const cancel = () => {
-      modal.style.display = 'none';
+      modal.classList.add('hidden');
+      cleanup();
       resolve({ action: 'cancel' });
     };
 
     const goBack = () => {
-      modal.style.display = 'none';
+      modal.classList.add('hidden');
+      cleanup();
       resolve({ action: 'back' });
     };
 
-    confirmBtn.onclick = submit;
-    cancelBtn.onclick = cancel;
-    if (backBtn) backBtn.onclick = goBack;
-    
-    input.onkeydown = (e) => {
+    const onKeydown = (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
       if (e.key === 'Escape') cancel();
     };
+
+    const cleanup = () => {
+      confirmBtn.onclick = null;
+      document.getElementById('dynamicCancelBtn').onclick = null;
+      backBtn.onclick = null;
+      input.onkeydown = null;
+    };
+
+    confirmBtn.onclick = submit;
+    document.getElementById('dynamicCancelBtn').onclick = cancel;
+    backBtn.onclick = goBack;
+    input.onkeydown = onKeydown;
   });
 }
 
@@ -550,11 +523,9 @@ function updateLastModifiedUI() {
 }
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
-    // Feedback visual temporal
-    const btn = document.querySelector('.node-actions button:nth-child(2)');
     const toast = document.createElement('div');
+    toast.className = 'toast';
     toast.textContent = '✓ Copiado';
-    toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10a37f; color:white; padding:6px 16px; border-radius:4px; font-size:12px; z-index:9999; transition:opacity 0.3s;';
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
   }).catch(() => {
