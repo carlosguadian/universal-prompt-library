@@ -469,7 +469,7 @@ function saveItem(title, content, type) {
     }
   } else {
     const newItem = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type: type,
       title: title,
       content: type === 'prompt' ? content : null,
@@ -548,14 +548,30 @@ function updateLastModifiedUI() {
 
   displayElement.innerText = `Última actualización: ${formattedDate}`;
 }
-function copyToClipboard(text) { navigator.clipboard.writeText(text); }
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    // Feedback visual temporal
+    const btn = document.querySelector('.node-actions button:nth-child(2)');
+    const toast = document.createElement('div');
+    toast.textContent = '✓ Copiado';
+    toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10a37f; color:white; padding:6px 16px; border-radius:4px; font-size:12px; z-index:9999; transition:opacity 0.3s;';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+  }).catch(() => {
+    alert('No se pudo copiar al portapapeles.');
+  });
+}
 
 function setupEventListeners() {
   document.getElementById('addFolderBtn').onclick = () => addNewItem('folder');
   document.getElementById('addPromptBtn').onclick = () => addNewItem('prompt');
   document.getElementById('searchInput').addEventListener('input', (e) => renderTree(e.target.value));
   document.getElementById('exportBtn').onclick = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(treeData));
+    const exportData = {
+      prompts: treeData,
+      variableHistory: variableHistory
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
     dlAnchorElem.setAttribute("download", "prompts_backup.json");
@@ -569,10 +585,47 @@ function setupEventListeners() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      try { treeData = JSON.parse(event.target.result); saveData(); renderTree(); alert('Biblioteca restaurada'); } 
-      catch(err) { alert('Error al leer el archivo'); }
+      try {
+        const parsed = JSON.parse(event.target.result);
+
+        // Soportar formato nuevo { prompts, variableHistory } y formato legacy (array directo)
+        let importedTree, importedHistory;
+        if (Array.isArray(parsed)) {
+          importedTree = parsed;
+          importedHistory = null;
+        } else if (parsed && Array.isArray(parsed.prompts)) {
+          importedTree = parsed.prompts;
+          importedHistory = parsed.variableHistory || null;
+        } else {
+          alert('Formato de archivo no válido. Se espera un array de prompts o un objeto con { prompts, variableHistory }.');
+          return;
+        }
+
+        // Validar que cada nodo tiene la estructura mínima esperada
+        const isValidNode = (node) => {
+          return node && typeof node.id === 'string' && typeof node.title === 'string'
+            && (node.type === 'prompt' || node.type === 'folder');
+        };
+        const validateTree = (nodes) => nodes.every(n => isValidNode(n) && (!n.children || validateTree(n.children)));
+
+        if (!validateTree(importedTree)) {
+          alert('El archivo contiene nodos con estructura incorrecta. Cada nodo necesita: id, title y type.');
+          return;
+        }
+
+        treeData = importedTree;
+        if (importedHistory && typeof importedHistory === 'object') {
+          variableHistory = importedHistory;
+        }
+        saveData();
+        renderTree();
+        alert('Biblioteca restaurada');
+      } catch(err) {
+        alert('Error al leer el archivo: JSON no válido.');
+      }
     };
     reader.readAsText(file);
+    e.target.value = ''; // Reset para permitir reimportar el mismo archivo
   };
   
   // Modal de edición de items
