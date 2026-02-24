@@ -69,7 +69,7 @@ function renderTree(filterText = '') {
     actions.className = 'node-actions';
     
     if (node.type === 'prompt') {
-      actions.appendChild(createActionBtn('send', () => { console.log('[DEBUG] Botón SEND pulsado para:', node.title); return handleInject(node); }));
+      actions.appendChild(createActionBtn('send', () => handleInject(node)));
       actions.appendChild(createActionBtn('content_copy', () => {
         copyToClipboard(node.content);
         node.useCount = (node.useCount || 0) + 1;
@@ -310,20 +310,16 @@ function escapeRegex(string) {
 
 async function handleInject(node) {
   try {
-    console.log('[DEBUG] handleInject llamado, title:', node.title, ', content type:', typeof node.content, ', content length:', node.content ? node.content.length : 'N/A');
     let content = node.content;
 
     if (!content || typeof content !== 'string' || content.trim() === '') {
-      console.error('[DEBUG] node.content está vacío o es null:', JSON.stringify(content));
       alert('Este prompt no tiene contenido. Edítalo para añadir texto.');
       return;
     }
 
-    console.log('[DEBUG] content OK, buscando variables...');
     // Regex para capturar {{Variable}} o {{Variable|Default}}
     const regex = /{{(.*?)}}/g;
     const matches = [...content.matchAll(regex)];
-    console.log('[DEBUG] Variables encontradas:', matches.length);
   
   // Mapa para unicidad
   const uniqueVarsMap = new Map();
@@ -380,24 +376,18 @@ async function handleInject(node) {
   saveData();
 
   // Inyección final
-  console.log('[DEBUG] Enviando mensaje a tab...', { contentLength: content.length });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  console.log('[DEBUG] Tab encontrada:', tab ? { id: tab.id, url: tab.url } : 'NO TAB');
   if (tab) {
     chrome.tabs.sendMessage(tab.id, { action: "injectPrompt", text: content })
-      .then(response => {
-        console.log('[DEBUG] Respuesta del content script:', response);
-      })
       .catch(error => {
-        console.error("[DEBUG] Error sendMessage:", error);
+        console.error("Error sendMessage:", error);
         alert("Error: Recarga la página (F5) para reconectar la extensión.");
       });
   } else {
-    console.error('[DEBUG] No se encontró tab activa');
     alert('Error: No se encontró la pestaña activa.');
   }
   } catch (err) {
-    console.error('[DEBUG] ERROR INESPERADO en handleInject:', err);
+    console.error('Error en handleInject:', err);
     alert('Error inesperado: ' + err.message);
   }
 }
@@ -473,9 +463,7 @@ function renderChips(varName) {
 
 function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
   return new Promise((resolve) => {
-    console.log('[DEBUG] askUserForValue llamado:', { varName, defaultValue, currentIndex, totalVars });
     const modal = document.getElementById('varModal');
-    console.log('[DEBUG] varModal element:', modal, 'classList:', modal ? modal.classList.toString() : 'N/A');
     const isLastStep = currentIndex === totalVars - 1;
 
     // Actualizar contenido dinámico (sin recrear estructura)
@@ -483,13 +471,11 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     document.getElementById('varStepIndicator').textContent = `Paso ${currentIndex + 1} de ${totalVars}`;
 
     const input = document.getElementById('dynamicVarInput');
-    console.log('[DEBUG] dynamicVarInput element:', input ? 'OK' : 'NULL');
     input.value = defaultValue || '';
     input.placeholder = defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...';
     input.style.borderColor = '';
 
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
-    console.log('[DEBUG] dynamicConfirmBtn element:', confirmBtn ? 'OK' : 'NULL');
     confirmBtn.textContent = isLastStep ? 'Insertar' : 'Siguiente';
 
     const backBtn = document.getElementById('dynamicBackBtn');
@@ -500,9 +486,7 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     renderChips(varName);
 
     // Mostrar modal
-    console.log('[DEBUG] Mostrando varModal...');
     modal.classList.remove('hidden');
-    console.log('[DEBUG] varModal después de remove hidden:', modal.classList.toString(), 'display:', window.getComputedStyle(modal).display);
     input.focus();
     if (input.value) input.select();
 
