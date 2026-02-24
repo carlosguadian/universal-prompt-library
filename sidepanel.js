@@ -473,7 +473,9 @@ function renderChips(varName) {
 
 function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
   return new Promise((resolve) => {
+    console.log('[DEBUG] askUserForValue llamado:', { varName, defaultValue, currentIndex, totalVars });
     const modal = document.getElementById('varModal');
+    console.log('[DEBUG] varModal element:', modal, 'classList:', modal ? modal.classList.toString() : 'N/A');
     const isLastStep = currentIndex === totalVars - 1;
 
     // Actualizar contenido dinámico (sin recrear estructura)
@@ -481,11 +483,13 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     document.getElementById('varStepIndicator').textContent = `Paso ${currentIndex + 1} de ${totalVars}`;
 
     const input = document.getElementById('dynamicVarInput');
+    console.log('[DEBUG] dynamicVarInput element:', input ? 'OK' : 'NULL');
     input.value = defaultValue || '';
     input.placeholder = defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...';
     input.style.borderColor = '';
 
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
+    console.log('[DEBUG] dynamicConfirmBtn element:', confirmBtn ? 'OK' : 'NULL');
     confirmBtn.textContent = isLastStep ? 'Insertar' : 'Siguiente';
 
     const backBtn = document.getElementById('dynamicBackBtn');
@@ -496,7 +500,9 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     renderChips(varName);
 
     // Mostrar modal
+    console.log('[DEBUG] Mostrando varModal...');
     modal.classList.remove('hidden');
+    console.log('[DEBUG] varModal después de remove hidden:', modal.classList.toString(), 'display:', window.getComputedStyle(modal).display);
     input.focus();
     if (input.value) input.select();
 
