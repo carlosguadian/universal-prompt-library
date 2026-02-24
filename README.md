@@ -155,4 +155,4 @@ Contributions are welcome!
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-*Created with ❤️ by Carlos Guadián.*
+*Created with ❤️ by Carlos Guadián Orta.*
