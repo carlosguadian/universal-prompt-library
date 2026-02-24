@@ -69,7 +69,7 @@ function renderTree(filterText = '') {
     actions.className = 'node-actions';
     
     if (node.type === 'prompt') {
-      actions.appendChild(createActionBtn('send', () => handleInject(node)));
+      actions.appendChild(createActionBtn('send', () => { console.log('[DEBUG] Botón SEND pulsado para:', node.title); return handleInject(node); }));
       actions.appendChild(createActionBtn('content_copy', () => {
         copyToClipboard(node.content);
         node.useCount = (node.useCount || 0) + 1;
@@ -309,11 +309,21 @@ function escapeRegex(string) {
 // --- GESTIÓN DE VARIABLES Y PROMPTS (MEJORADA) ---
 
 async function handleInject(node) {
-  let content = node.content;
-  
-  // Regex para capturar {{Variable}} o {{Variable|Default}}
-  const regex = /{{(.*?)}}/g; 
-  const matches = [...content.matchAll(regex)];
+  try {
+    console.log('[DEBUG] handleInject llamado, title:', node.title, ', content type:', typeof node.content, ', content length:', node.content ? node.content.length : 'N/A');
+    let content = node.content;
+
+    if (!content || typeof content !== 'string' || content.trim() === '') {
+      console.error('[DEBUG] node.content está vacío o es null:', JSON.stringify(content));
+      alert('Este prompt no tiene contenido. Edítalo para añadir texto.');
+      return;
+    }
+
+    console.log('[DEBUG] content OK, buscando variables...');
+    // Regex para capturar {{Variable}} o {{Variable|Default}}
+    const regex = /{{(.*?)}}/g;
+    const matches = [...content.matchAll(regex)];
+    console.log('[DEBUG] Variables encontradas:', matches.length);
   
   // Mapa para unicidad
   const uniqueVarsMap = new Map();
@@ -370,13 +380,25 @@ async function handleInject(node) {
   saveData();
 
   // Inyección final
+  console.log('[DEBUG] Enviando mensaje a tab...', { contentLength: content.length });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  console.log('[DEBUG] Tab encontrada:', tab ? { id: tab.id, url: tab.url } : 'NO TAB');
   if (tab) {
     chrome.tabs.sendMessage(tab.id, { action: "injectPrompt", text: content })
+      .then(response => {
+        console.log('[DEBUG] Respuesta del content script:', response);
+      })
       .catch(error => {
-        console.error("Error:", error);
+        console.error("[DEBUG] Error sendMessage:", error);
         alert("Error: Recarga la página (F5) para reconectar la extensión.");
       });
+  } else {
+    console.error('[DEBUG] No se encontró tab activa');
+    alert('Error: No se encontró la pestaña activa.');
+  }
+  } catch (err) {
+    console.error('[DEBUG] ERROR INESPERADO en handleInject:', err);
+    alert('Error inesperado: ' + err.message);
   }
 }
 
