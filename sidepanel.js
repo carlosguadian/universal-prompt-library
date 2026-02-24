@@ -211,6 +211,11 @@ function findParent(nodes, childId) {
   return null;
 }
 
+// --- UTILIDADES ---
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // --- GESTIÓN DE VARIABLES Y PROMPTS (MEJORADA) ---
 
 async function handleInject(node) {
@@ -261,7 +266,7 @@ async function handleInject(node) {
 
     // Una vez completadas TODAS las variables, hacemos el reemplazo en el texto
     for (const [varName, value] of Object.entries(userAnswers)) {
-      const replaceRegex = new RegExp(`{{${varName}(\\|.*?)?}}`, 'g');
+      const replaceRegex = new RegExp(`{{${escapeRegex(varName)}(\\|.*?)?}}`, 'g');
       content = content.replace(replaceRegex, value);
     }
     
@@ -308,47 +313,56 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
     const renderChips = () => {
       const historyOptions = variableHistory[varName] || [];
       const container = document.getElementById('chipsContainer');
-      if (!container) return; 
+      if (!container) return;
+
+      // Limpiar contenido anterior de forma segura
+      container.innerHTML = '';
 
       if (historyOptions.length === 0) {
-        container.innerHTML = '';
         container.style.display = 'none';
         return;
       }
 
       container.style.display = 'flex';
-      container.innerHTML = `
-        <span style="font-size:11px; color:#999; width:100%; margin-bottom:2px;">Historial reciente:</span>
-        ${historyOptions.map((opt, index) => {
-          const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
-          const safeValue = opt.replace(/"/g, '&quot;'); 
-          return `
-            <div class="history-chip" title="${safeValue}">
-              <span class="text" data-value="${safeValue}">${shortText}</span>
-              <span class="chip-delete" data-index="${index}">×</span>
-            </div>`;
-        }).join('')}
-      `;
 
-      container.querySelectorAll('.text').forEach(span => {
-        span.onclick = (e) => {
-          e.stopPropagation(); 
+      // Label de "Historial reciente"
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:11px; color:#999; width:100%; margin-bottom:2px;';
+      label.textContent = 'Historial reciente:';
+      container.appendChild(label);
+
+      // Crear chips de forma segura (sin innerHTML)
+      historyOptions.forEach((opt, index) => {
+        const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
+
+        const chip = document.createElement('div');
+        chip.className = 'history-chip';
+        chip.title = opt; // title se asigna como texto, no HTML
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'text';
+        textSpan.textContent = shortText; // textContent es seguro contra XSS
+        textSpan.onclick = (e) => {
+          e.stopPropagation();
           const input = document.getElementById('dynamicVarInput');
-          input.value = span.getAttribute('data-value');
+          input.value = opt; // Usamos el valor original directamente
           input.focus();
           input.style.backgroundColor = '#f0fff4';
           setTimeout(() => input.style.backgroundColor = 'white', 300);
         };
-      });
 
-      container.querySelectorAll('.chip-delete').forEach(btn => {
-        btn.onclick = (e) => {
-          e.stopPropagation(); 
-          const idx = parseInt(btn.getAttribute('data-index'));
-          variableHistory[varName].splice(idx, 1);
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'chip-delete';
+        deleteBtn.textContent = '×';
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          variableHistory[varName].splice(index, 1);
           chrome.storage.local.set({ varHistory: variableHistory });
           renderChips();
         };
+
+        chip.append(textSpan, deleteBtn);
+        container.appendChild(chip);
       });
     };
 
@@ -455,7 +469,7 @@ function saveItem(title, content, type) {
     }
   } else {
     const newItem = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type: type,
       title: title,
       content: type === 'prompt' ? content : null,
@@ -534,14 +548,30 @@ function updateLastModifiedUI() {
 
   displayElement.innerText = `Última actualización: ${formattedDate}`;
 }
-function copyToClipboard(text) { navigator.clipboard.writeText(text); }
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    // Feedback visual temporal
+    const btn = document.querySelector('.node-actions button:nth-child(2)');
+    const toast = document.createElement('div');
+    toast.textContent = '✓ Copiado';
+    toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10a37f; color:white; padding:6px 16px; border-radius:4px; font-size:12px; z-index:9999; transition:opacity 0.3s;';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+  }).catch(() => {
+    alert('No se pudo copiar al portapapeles.');
+  });
+}
 
 function setupEventListeners() {
   document.getElementById('addFolderBtn').onclick = () => addNewItem('folder');
   document.getElementById('addPromptBtn').onclick = () => addNewItem('prompt');
   document.getElementById('searchInput').addEventListener('input', (e) => renderTree(e.target.value));
   document.getElementById('exportBtn').onclick = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(treeData));
+    const exportData = {
+      prompts: treeData,
+      variableHistory: variableHistory
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
     dlAnchorElem.setAttribute("download", "prompts_backup.json");
@@ -555,10 +585,47 @@ function setupEventListeners() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      try { treeData = JSON.parse(event.target.result); saveData(); renderTree(); alert('Biblioteca restaurada'); } 
-      catch(err) { alert('Error al leer el archivo'); }
+      try {
+        const parsed = JSON.parse(event.target.result);
+
+        // Soportar formato nuevo { prompts, variableHistory } y formato legacy (array directo)
+        let importedTree, importedHistory;
+        if (Array.isArray(parsed)) {
+          importedTree = parsed;
+          importedHistory = null;
+        } else if (parsed && Array.isArray(parsed.prompts)) {
+          importedTree = parsed.prompts;
+          importedHistory = parsed.variableHistory || null;
+        } else {
+          alert('Formato de archivo no válido. Se espera un array de prompts o un objeto con { prompts, variableHistory }.');
+          return;
+        }
+
+        // Validar que cada nodo tiene la estructura mínima esperada
+        const isValidNode = (node) => {
+          return node && typeof node.id === 'string' && typeof node.title === 'string'
+            && (node.type === 'prompt' || node.type === 'folder');
+        };
+        const validateTree = (nodes) => nodes.every(n => isValidNode(n) && (!n.children || validateTree(n.children)));
+
+        if (!validateTree(importedTree)) {
+          alert('El archivo contiene nodos con estructura incorrecta. Cada nodo necesita: id, title y type.');
+          return;
+        }
+
+        treeData = importedTree;
+        if (importedHistory && typeof importedHistory === 'object') {
+          variableHistory = importedHistory;
+        }
+        saveData();
+        renderTree();
+        alert('Biblioteca restaurada');
+      } catch(err) {
+        alert('Error al leer el archivo: JSON no válido.');
+      }
     };
     reader.readAsText(file);
+    e.target.value = ''; // Reset para permitir reimportar el mismo archivo
   };
   
   // Modal de edición de items

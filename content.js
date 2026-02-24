@@ -1,5 +1,3 @@
-console.log("%c BIBLIOTECA UNIVERSAL: OPTIMIZADA ", "background: #000; color: #00ff00; font-size: 14px");
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "injectPrompt") {
     injectText(request.text);
