@@ -8,9 +8,34 @@ let lastModifiedTimestamp = null; // Marca de tiempo
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
+  loadDarkMode();
   renderTree();
   setupEventListeners();
 });
+
+// --- DARK MODE ---
+function loadDarkMode() {
+  chrome.storage.local.get('darkMode', (result) => {
+    if (result.darkMode) {
+      document.body.classList.add('dark-mode');
+      updateDarkModeIcon(true);
+    }
+  });
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  chrome.storage.local.set({ darkMode: isDark });
+  updateDarkModeIcon(isDark);
+}
+
+function updateDarkModeIcon(isDark) {
+  const btn = document.getElementById('darkModeBtn');
+  if (btn) {
+    btn.querySelector('.material-icons').innerText = isDark ? 'light_mode' : 'dark_mode';
+    btn.title = isDark ? 'Modo claro' : 'Modo oscuro';
+  }
+}
 
 // --- RENDERIZADO ---
 function renderTree(filterText = '') {
@@ -39,14 +64,27 @@ function renderTree(filterText = '') {
     
     const title = document.createElement('span');
     title.innerText = node.title;
-    
+
     const actions = document.createElement('div');
     actions.className = 'node-actions';
     
     if (node.type === 'prompt') {
       actions.appendChild(createActionBtn('send', () => handleInject(node)));
-      actions.appendChild(createActionBtn('content_copy', () => copyToClipboard(node.content)));
+      actions.appendChild(createActionBtn('content_copy', () => {
+        copyToClipboard(node.content);
+        node.useCount = (node.useCount || 0) + 1;
+        node.lastUsed = Date.now();
+        saveData();
+      }));
     }
+    // Botón de favorito (estrella)
+    const favBtn = createActionBtn(
+      node.isFavorite ? 'star' : 'star_border',
+      () => toggleFavorite(node.id)
+    );
+    if (node.isFavorite) favBtn.classList.add('favorite-active');
+    actions.appendChild(favBtn);
+    actions.appendChild(createActionBtn('file_copy', () => duplicateNode(node.id)));
     actions.appendChild(createActionBtn('edit', () => openModal(node.type, node.id)));
     actions.appendChild(createActionBtn('delete', () => deleteNode(node.id)));
 
@@ -54,8 +92,41 @@ function renderTree(filterText = '') {
     spacer.className = 'spacer';
     spacer.innerText = " "; 
 
-    header.append(icon, title, spacer, actions);
+    // Montar header: icono, título, [estrella favorito], [badge uso], spacer, acciones
+    const headerElements = [icon, title];
+
+    if (node.isFavorite) {
+      const favIcon = document.createElement('span');
+      favIcon.className = 'material-icons favorite-indicator';
+      favIcon.innerText = 'star';
+      headerElements.push(favIcon);
+    }
+
+    if (node.type === 'prompt' && node.useCount > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'use-count-badge';
+      badge.title = `Usado ${node.useCount} ${node.useCount === 1 ? 'vez' : 'veces'}${node.lastUsed ? ' · Último: ' + new Date(node.lastUsed).toLocaleDateString('es-ES') : ''}`;
+      badge.textContent = node.useCount;
+      headerElements.push(badge);
+    }
+
+    headerElements.push(spacer, actions);
+    header.append(...headerElements);
     div.appendChild(header);
+
+    // Preview de contenido para prompts
+    if (node.type === 'prompt' && node.content) {
+      const preview = document.createElement('div');
+      preview.className = 'prompt-preview';
+      preview.textContent = node.content.length > 200 ? node.content.substring(0, 200) + '…' : node.content;
+      div.appendChild(preview);
+
+      header.addEventListener('click', (e) => {
+        if (!e.target.closest('button')) {
+          preview.classList.toggle('open');
+        }
+      });
+    }
 
     if (node.type === 'folder') {
       const childrenContainer = document.createElement('div');
@@ -72,8 +143,10 @@ function renderTree(filterText = '') {
       header.addEventListener('click', (e) => {
         if (!e.target.closest('button') && !header.classList.contains('dragging')) {
           node.isOpen = !node.isOpen;
+          // Actualización parcial: solo toggle del contenedor hijo + icono
+          childrenContainer.classList.toggle('open', node.isOpen);
+          icon.innerText = node.isOpen ? 'folder_open' : 'folder';
           saveData();
-          renderTree(filterText);
         }
       });
     }
@@ -82,7 +155,9 @@ function renderTree(filterText = '') {
     return div;
   }
 
-  treeData.forEach(node => {
+  // Ordenar: favoritos primero (manteniendo orden relativo)
+  const sortedData = [...treeData].sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+  sortedData.forEach(node => {
     const el = createNodeElement(node);
     if(el) container.appendChild(el);
   });
@@ -274,6 +349,11 @@ async function handleInject(node) {
     chrome.storage.local.set({ varHistory: variableHistory });
   }
 
+  // Tracking de uso
+  node.useCount = (node.useCount || 0) + 1;
+  node.lastUsed = Date.now();
+  saveData();
+
   // Inyección final
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
@@ -299,160 +379,131 @@ function saveToHistory(varName, value) {
   }
 }
 
-// Modal Dinámico con Datalist
+// --- MODAL DE VARIABLES (Estructura fija en HTML, solo se actualizan valores) ---
+
+function renderChips(varName) {
+  const historyOptions = variableHistory[varName] || [];
+  const container = document.getElementById('chipsContainer');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (historyOptions.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+
+  const label = document.createElement('span');
+  label.className = 'history-label';
+  label.textContent = 'Historial reciente:';
+  container.appendChild(label);
+
+  historyOptions.forEach((opt, index) => {
+    const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
+
+    const chip = document.createElement('div');
+    chip.className = 'history-chip';
+    chip.title = opt;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'text';
+    textSpan.textContent = shortText;
+    textSpan.onclick = (e) => {
+      e.stopPropagation();
+      const input = document.getElementById('dynamicVarInput');
+      input.value = opt;
+      input.focus();
+      input.style.backgroundColor = document.body.classList.contains('dark-mode') ? '#0a3d2e' : '#f0fff4';
+      setTimeout(() => input.style.backgroundColor = '', 300);
+    };
+
+    const deleteBtn = document.createElement('span');
+    deleteBtn.className = 'chip-delete';
+    deleteBtn.textContent = '×';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      variableHistory[varName].splice(index, 1);
+      chrome.storage.local.set({ varHistory: variableHistory });
+      renderChips(varName);
+    };
+
+    chip.append(textSpan, deleteBtn);
+    container.appendChild(chip);
+  });
+}
 
 function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
   return new Promise((resolve) => {
-    let modal = document.getElementById('varModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'varModal';
-      document.body.appendChild(modal);
-    }
-
-    const renderChips = () => {
-      const historyOptions = variableHistory[varName] || [];
-      const container = document.getElementById('chipsContainer');
-      if (!container) return;
-
-      // Limpiar contenido anterior de forma segura
-      container.innerHTML = '';
-
-      if (historyOptions.length === 0) {
-        container.style.display = 'none';
-        return;
-      }
-
-      container.style.display = 'flex';
-
-      // Label de "Historial reciente"
-      const label = document.createElement('span');
-      label.style.cssText = 'font-size:11px; color:#999; width:100%; margin-bottom:2px;';
-      label.textContent = 'Historial reciente:';
-      container.appendChild(label);
-
-      // Crear chips de forma segura (sin innerHTML)
-      historyOptions.forEach((opt, index) => {
-        const shortText = opt.length > 30 ? opt.substring(0, 30) + '...' : opt;
-
-        const chip = document.createElement('div');
-        chip.className = 'history-chip';
-        chip.title = opt; // title se asigna como texto, no HTML
-
-        const textSpan = document.createElement('span');
-        textSpan.className = 'text';
-        textSpan.textContent = shortText; // textContent es seguro contra XSS
-        textSpan.onclick = (e) => {
-          e.stopPropagation();
-          const input = document.getElementById('dynamicVarInput');
-          input.value = opt; // Usamos el valor original directamente
-          input.focus();
-          input.style.backgroundColor = '#f0fff4';
-          setTimeout(() => input.style.backgroundColor = 'white', 300);
-        };
-
-        const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'chip-delete';
-        deleteBtn.textContent = '×';
-        deleteBtn.onclick = (e) => {
-          e.stopPropagation();
-          variableHistory[varName].splice(index, 1);
-          chrome.storage.local.set({ varHistory: variableHistory });
-          renderChips();
-        };
-
-        chip.append(textSpan, deleteBtn);
-        container.appendChild(chip);
-      });
-    };
-
-    // Textos dinámicos para los botones según el paso
+    const modal = document.getElementById('varModal');
     const isLastStep = currentIndex === totalVars - 1;
-    const confirmText = isLastStep ? 'Insertar' : 'Siguiente';
-    const backBtnHTML = currentIndex > 0 
-      ? `<button id="dynamicBackBtn" style="padding:8px 16px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white; color:#333;">← Atrás</button>` 
-      : `<div></div>`; // Div vacío para mantener el espaciado flex
 
-    modal.innerHTML = `
-      <div class="modal-content" style="background:white; padding:20px; border-radius:8px; width:90%; max-width:500px; box-shadow:0 4px 15px rgba(0,0,0,0.2); display:flex; flex-direction:column;">
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0;">
-          <h3 style="margin:0;">Variable: <span style="color:#10a37f; background:#e0f2f1; padding:2px 6px; border-radius:4px;">${varName}</span></h3>
-          <span style="font-size:12px; color:#999; font-weight:bold;">Paso ${currentIndex + 1} de ${totalVars}</span>
-        </div>
-        
-        <p style="margin:10px 0; color:#666; font-size:13px;">Introduce o pega el contenido para esta variable:</p>
-        
-        <div id="chipsContainer" class="history-container"></div>
+    // Actualizar contenido dinámico (sin recrear estructura)
+    document.getElementById('varNameTitle').textContent = varName;
+    document.getElementById('varStepIndicator').textContent = `Paso ${currentIndex + 1} de ${totalVars}`;
 
-        <textarea id="dynamicVarInput" 
-                  placeholder="${defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...'}"
-                  spellcheck="false">${defaultValue || ''}</textarea>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-          ${backBtnHTML}
-          
-          <div style="display:flex; gap:10px;">
-            <button id="dynamicCancelBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#eee;">Cancelar</button>
-            <button id="dynamicConfirmBtn" style="padding:8px 16px; border:none; border-radius:4px; cursor:pointer; background:#10a37f; color:white;">${confirmText}</button>
-          </div>
-        </div>
-        
-        <div style="font-size:10px; color:#aaa; margin-top:8px; text-align:right;">Ctrl + Enter para ${isLastStep ? 'insertar' : 'avanzar'}</div>
-      </div>
-    `;
-
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.background = 'rgba(0,0,0,0.5)';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.zIndex = '1000';
-    
     const input = document.getElementById('dynamicVarInput');
+    input.value = defaultValue || '';
+    input.placeholder = defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...';
+    input.style.borderColor = '';
+
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
-    const cancelBtn = document.getElementById('dynamicCancelBtn');
+    confirmBtn.textContent = isLastStep ? 'Insertar' : 'Siguiente';
+
     const backBtn = document.getElementById('dynamicBackBtn');
+    backBtn.classList.toggle('hidden', currentIndex === 0);
 
-    renderChips();
+    document.getElementById('varHintAction').textContent = isLastStep ? 'insertar' : 'avanzar';
 
+    renderChips(varName);
+
+    // Mostrar modal
+    modal.classList.remove('hidden');
     input.focus();
-    if(input.value) input.select();
+    if (input.value) input.select();
 
+    // Handlers (reasignar para limpiar referencias anteriores)
     const submit = () => {
       let val = input.value.trim();
-      if (val === "" && defaultValue) val = defaultValue;
-      
+      if (val === '' && defaultValue) val = defaultValue;
       if (!val && !defaultValue) {
-        input.style.borderColor = "red";
+        input.style.borderColor = 'red';
         return;
       }
-      modal.style.display = 'none';
-      resolve({ action: 'next', value: val }); // Ahora devuelve un objeto de acción
+      modal.classList.add('hidden');
+      cleanup();
+      resolve({ action: 'next', value: val });
     };
 
     const cancel = () => {
-      modal.style.display = 'none';
+      modal.classList.add('hidden');
+      cleanup();
       resolve({ action: 'cancel' });
     };
 
     const goBack = () => {
-      modal.style.display = 'none';
+      modal.classList.add('hidden');
+      cleanup();
       resolve({ action: 'back' });
     };
 
-    confirmBtn.onclick = submit;
-    cancelBtn.onclick = cancel;
-    if (backBtn) backBtn.onclick = goBack;
-    
-    input.onkeydown = (e) => {
+    const onKeydown = (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
       if (e.key === 'Escape') cancel();
     };
+
+    const cleanup = () => {
+      confirmBtn.onclick = null;
+      document.getElementById('dynamicCancelBtn').onclick = null;
+      backBtn.onclick = null;
+      input.onkeydown = null;
+    };
+
+    confirmBtn.onclick = submit;
+    document.getElementById('dynamicCancelBtn').onclick = cancel;
+    backBtn.onclick = goBack;
+    input.onkeydown = onKeydown;
   });
 }
 
@@ -480,6 +531,46 @@ function saveItem(title, content, type) {
   }
   saveData();
   renderTree();
+}
+
+function toggleFavorite(id) {
+  const node = findNode(treeData, id);
+  if (!node) return;
+  node.isFavorite = !node.isFavorite;
+  saveData();
+  renderTree();
+  showToast(node.isFavorite ? '⭐ Añadido a favoritos' : 'Eliminado de favoritos');
+}
+
+function duplicateNode(id) {
+  const original = findNode(treeData, id);
+  if (!original) return;
+
+  const deepClone = (node, isRoot) => {
+    const clone = {
+      id: crypto.randomUUID(),
+      type: node.type,
+      title: isRoot ? node.title + ' (copia)' : node.title,
+      content: node.content || null,
+      children: node.children ? node.children.map(c => deepClone(c, false)) : null,
+      isOpen: node.isOpen || false
+    };
+    // No copiar useCount/lastUsed (se resetean), pero sí isFavorite
+    if (node.isFavorite) clone.isFavorite = true;
+    return clone;
+  };
+
+  const clone = deepClone(original, true);
+
+  // Insertar justo después del original en el mismo nivel
+  const parentNode = findParent(treeData, id);
+  const siblings = parentNode ? parentNode.children : treeData;
+  const idx = siblings.findIndex(n => n.id === id);
+  siblings.splice(idx + 1, 0, clone);
+
+  saveData();
+  renderTree();
+  showToast('✓ Duplicado');
 }
 
 function deleteNode(id) {
@@ -548,15 +639,17 @@ function updateLastModifiedUI() {
 
   displayElement.innerText = `Última actualización: ${formattedDate}`;
 }
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+}
+
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
-    // Feedback visual temporal
-    const btn = document.querySelector('.node-actions button:nth-child(2)');
-    const toast = document.createElement('div');
-    toast.textContent = '✓ Copiado';
-    toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#10a37f; color:white; padding:6px 16px; border-radius:4px; font-size:12px; z-index:9999; transition:opacity 0.3s;';
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
+    showToast('✓ Copiado');
   }).catch(() => {
     alert('No se pudo copiar al portapapeles.');
   });
@@ -566,6 +659,7 @@ function setupEventListeners() {
   document.getElementById('addFolderBtn').onclick = () => addNewItem('folder');
   document.getElementById('addPromptBtn').onclick = () => addNewItem('prompt');
   document.getElementById('searchInput').addEventListener('input', (e) => renderTree(e.target.value));
+  document.getElementById('darkModeBtn').onclick = toggleDarkMode;
   document.getElementById('exportBtn').onclick = () => {
     const exportData = {
       prompts: treeData,

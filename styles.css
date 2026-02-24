@@ -297,13 +297,283 @@ textarea { height: 150px; resize: vertical; font-size: 13px; line-height: 1.4; }
 /* Ajuste para el Textarea del Modal */
 #dynamicVarInput {
   width: 100%;
-  min-height: 100px; /* Altura inicial generosa */
+  min-height: 100px;
   max-height: 300px;
   padding: 10px;
   margin-bottom: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-family: inherit; /* Heredar fuente para que no se vea monoespaciada */
-  resize: vertical; /* Permitir al usuario estirarlo */
+  font-family: inherit;
+  resize: vertical;
   box-sizing: border-box;
+}
+
+/* --- VAR MODAL (estructura fija) --- */
+.var-modal-content {
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+}
+.var-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+.var-modal-header h3 { margin: 0; }
+.var-step-indicator {
+  font-size: 12px;
+  color: #999;
+  font-weight: bold;
+}
+.var-modal-description {
+  margin: 10px 0;
+  color: #666;
+  font-size: 13px;
+}
+.var-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+.var-modal-actions-right {
+  display: flex;
+  gap: 10px;
+}
+.var-btn-back {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  background: white;
+  color: #333;
+}
+.var-btn-back.hidden { visibility: hidden; }
+.var-btn-confirm {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #10a37f;
+  color: white;
+}
+.var-btn-confirm:hover { background: #0d8a6a; }
+.var-modal-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 8px;
+  text-align: right;
+}
+
+/* Toast de feedback */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10a37f;
+  color: white;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 9999;
+  transition: opacity 0.3s;
+}
+
+/* Historial label */
+.history-label {
+  font-size: 11px;
+  color: #999;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+/* --- PROMPT PREVIEW (Fase 4) --- */
+.prompt-preview {
+  display: none;
+  padding: 8px 10px 8px 28px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #666;
+  background: #fafafa;
+  border-left: 3px solid #10a37f;
+  margin: 2px 0 2px 6px;
+  border-radius: 0 4px 4px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.prompt-preview.open { display: block; }
+
+/* --- FAVORITOS (Fase 4) --- */
+.favorite-indicator {
+  font-size: 14px;
+  color: #f5a623;
+  margin-left: 4px;
+  pointer-events: none;
+}
+
+.favorite-active .material-icons {
+  color: #f5a623 !important;
+}
+
+/* --- BADGE DE USO (Fase 4) --- */
+.use-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  background: #e8e8e8;
+  color: #888;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 0 5px;
+  margin-left: 6px;
+  pointer-events: none;
+}
+
+/* === DARK MODE (Fase 4) === */
+body.dark-mode {
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .header {
+  background: #16213e;
+  border-bottom-color: #2a2a4a;
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode textarea {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5a;
+}
+
+body.dark-mode input[type="text"]::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #666;
+}
+
+body.dark-mode button {
+  background: #2a2a4a;
+  color: #ccc;
+}
+body.dark-mode button:hover {
+  background: #3a3a5a;
+}
+
+body.dark-mode #lastModified { color: #666 !important; }
+
+body.dark-mode .node-header {
+  background: #16213e;
+  border-color: transparent;
+}
+body.dark-mode .node-header:hover {
+  background: #1f2b47;
+  border-color: #2a2a4a;
+}
+body.dark-mode .node-header.folder { color: #bbb; }
+body.dark-mode .node-header.prompt { color: #d0d0e0; }
+
+body.dark-mode .node-content {
+  border-left-color: #3a3a5a;
+}
+
+body.dark-mode .icon { color: #888; }
+
+body.dark-mode .node-header.dragging {
+  opacity: 0.5;
+  background: #2a2a4a;
+}
+
+body.dark-mode .prompt-preview {
+  background: #1a1a2e;
+  color: #999;
+  border-left-color: #10a37f;
+}
+
+body.dark-mode .use-count-badge {
+  background: #2a2a4a;
+  color: #999;
+}
+
+/* Dark mode: Modales */
+body.dark-mode .modal-content {
+  background: #16213e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .modal-content h3 span {
+  background: #0a3d2e;
+  color: #10a37f;
+}
+
+body.dark-mode .modal-content input {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5a;
+}
+
+body.dark-mode #dynamicVarInput {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5a;
+}
+
+body.dark-mode .var-modal-description { color: #999; }
+body.dark-mode .var-step-indicator { color: #777; }
+body.dark-mode .var-modal-hint { color: #666; }
+
+body.dark-mode .var-btn-back {
+  background: #1a1a2e;
+  color: #ccc;
+  border-color: #3a3a5a;
+}
+
+body.dark-mode .secondary { color: #999; }
+body.dark-mode .secondary:hover { background: #2a2a4a; }
+
+/* Dark mode: Chips */
+body.dark-mode .history-chip {
+  background-color: #2a2a4a;
+  border-color: #3a3a5a;
+  color: #bbb;
+}
+body.dark-mode .history-chip:hover {
+  background-color: #3a3a5a;
+  border-color: #4a4a6a;
+  color: #ddd;
+}
+body.dark-mode .chip-delete { color: #777; }
+body.dark-mode .chip-delete:hover {
+  background-color: #4a2020;
+  color: #e57373;
+}
+
+/* Dark mode: Footer */
+body.dark-mode .footer {
+  background-color: #16213e;
+  border-top-color: #2a2a4a;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+}
+body.dark-mode .promo-link { color: #ccc; }
+body.dark-mode .credits { color: #666; }
+body.dark-mode .credits b { color: #888; }
+body.dark-mode .credits a { color: #888; }
+body.dark-mode .separator { color: #444; }
+
+/* Dark mode: Drag & Drop */
+body.dark-mode .node-header.drag-top {
+  background: linear-gradient(to bottom, #0a3d2e 0%, transparent 20%);
+}
+body.dark-mode .node-header.drag-bottom {
+  background: linear-gradient(to top, #0a3d2e 0%, transparent 20%);
+}
+body.dark-mode .node-header.drag-inside {
+  background: #0a3d2e !important;
 }
