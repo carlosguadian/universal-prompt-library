@@ -74,7 +74,7 @@ function renderTree(filterText = '') {
         copyToClipboard(node.content);
         node.useCount = (node.useCount || 0) + 1;
         node.lastUsed = Date.now();
-        saveData();
+        saveData(false);
       }));
     }
     // Botón de favorito (estrella)
@@ -146,7 +146,7 @@ function renderTree(filterText = '') {
           // Actualización parcial: solo toggle del contenedor hijo + icono
           childrenContainer.classList.toggle('open', node.isOpen);
           icon.innerText = node.isOpen ? 'folder_open' : 'folder';
-          saveData();
+          saveData(false);
         }
       });
     }
@@ -370,10 +370,10 @@ async function handleInject(node) {
     chrome.storage.local.set({ varHistory: variableHistory });
   }
 
-  // Tracking de uso
+  // Tracking de uso (no actualiza timestamp — no es un cambio en la biblioteca)
   node.useCount = (node.useCount || 0) + 1;
   node.lastUsed = Date.now();
-  saveData();
+  saveData(false);
 
   // Inyección final
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -635,17 +635,16 @@ async function loadData() {
   updateLastModifiedUI(); // Actualizamos el texto al cargar
 }
 
-function saveData() { 
-  // Cada vez que guardamos, actualizamos la fecha al instante actual
-  lastModifiedTimestamp = Date.now();
-  
-  chrome.storage.local.set({ 
+function saveData(updateTimestamp = true) {
+  if (updateTimestamp) {
+    lastModifiedTimestamp = Date.now();
+  }
+  chrome.storage.local.set({
     promptTree: treeData,
-    varHistory: variableHistory, // Si lo tienes implementado
-    lastModified: lastModifiedTimestamp // Guardamos la marca de tiempo
+    varHistory: variableHistory,
+    lastModified: lastModifiedTimestamp
   });
-  
-  updateLastModifiedUI(); // Refrescamos el texto en pantalla
+  updateLastModifiedUI();
 }
 // NUEVA FUNCIÓN: Para formatear y mostrar la fecha
 function updateLastModifiedUI() {
