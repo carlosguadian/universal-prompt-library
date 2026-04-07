@@ -12,6 +12,8 @@ A powerful, local-first browser extension to manage, organize, and inject prompt
 ### Core
 * **💉 Universal Injection:** Works on **any** website. Automatically detects chat inputs in ChatGPT, Claude, Gemini, Perplexity, HuggingChat, and any generic text area or contenteditable field.
 * **⚡️ High Performance:** Optimized injection engine with native setter hack for textareas and smart `innerText` fallback for large texts (2000+ chars), ensuring instant injection without freezing.
+* **📚 Multi-Library Support:** Manage multiple independent libraries (e.g. *Personal*, *Work*, *Clients*) from a single dropdown in the header. Create, rename and delete libraries on the fly. Existing single-tree data is migrated automatically on first run.
+* **↪️ Move Between Libraries:** Move any prompt or folder (with all its children) to another library from the context menu (⋮). The submenu expands inline so the main menu stays visible while you pick the destination.
 * **📂 Unlimited Folders:** Organize your prompts in a nested folder structure without depth limits. Collapsible folders with visual open/closed icons.
 * **🔍 Instant Search:** Real-time filtering by title **and** content to find any prompt instantly.
 * **🖱️ Smart Drag & Drop:** Reorder prompts and folders freely with precise drop zones — insert before, after, or inside a folder — with visual guides.
@@ -38,8 +40,9 @@ A powerful, local-first browser extension to manage, organize, and inject prompt
 * **📥 Import:** Restore from a backup file with full validation. Supports both the new format (`{prompts, variableHistory}`) and legacy format (plain array) for backward compatibility.
 * **🕐 Last Modified Indicator:** Displays the timestamp of the last library change, useful for keeping track of sync status across browsers.
 
-### Appearance
+### Appearance & Localization
 * **🌙 Dark Mode:** Full dark theme with a single toggle button. Covers all UI elements — tree, modals, chips, footer, drag & drop guides, and previews. Your preference persists across sessions.
+* **🌍 Multi-Language UI:** Full interface translation in **Español**, **English** and **Català**. Auto-detected from your browser language on first run, switchable any time from the 🌐 button in the header, and persisted across sessions. Last-updated date is also formatted in the active locale.
 * **✨ Visual Feedback:** Toast notifications for copy, duplicate, and favorite actions. Yellow flash animation on the target chat input when injecting a prompt.
 
 ## 🛠️ Installation
@@ -47,7 +50,7 @@ A powerful, local-first browser extension to manage, organize, and inject prompt
 Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-library/releases)** on the right side of this repository to download the correct version for your browser.
 
 ### 🟢 Google Chrome / Edge / Brave / Opera
-1. Download **`universal-prompt-library-chrome-v1.1.0.zip`** from the latest Release.
+1. Download **`universal-prompt-library-chrome-v1.3.0.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Chrome and go to `chrome://extensions/`.
 4. Toggle **"Developer mode"** on (top right corner).
@@ -55,7 +58,7 @@ Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-li
 6. Select the unzipped folder. **Done!**
 
 ### 🦊 Mozilla Firefox
-1. Download **`universal-prompt-library-firefox-v1.1.0.zip`** from the latest Release.
+1. Download **`universal-prompt-library-firefox-v1.3.0.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Firefox and type `about:debugging` in the address bar.
 4. Click **"This Firefox"** on the left menu.
@@ -67,21 +70,27 @@ Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-li
 ### 1. Opening the Library
 Click the extension icon in your toolbar. This will open the **Side Panel** where your entire prompt library lives.
 
-### 2. Managing Prompts & Folders
+### 2. Managing Libraries
+* **Switch:** Click the library name in the header to open the dropdown and switch between libraries.
+* **Create:** From the same dropdown, click **➕ New library** and give it a name.
+* **Rename / Delete:** Hover over a library in the dropdown and use the ✏️ / 🗑️ icons.
+* **Move items between libraries:** Open the ⋮ menu of any prompt or folder and pick **"Move to library…"** — the destinations expand inline so you don't lose context.
+
+### 3. Managing Prompts & Folders
 * **Create:** Use the toolbar buttons to create a **New Folder** 📂 or a **New Prompt** 📝.
-* **Edit:** Hover over any item and click the ✏️ edit button to modify title or content.
-* **Delete:** Click the 🗑️ delete button (with confirmation).
-* **Duplicate:** Click the 📑 copy button to clone any item instantly.
-* **Favorite:** Click the ⭐ star button to pin items to the top of your library.
+* **Edit:** Open the ⋮ context menu of any item and click **Edit** to modify title or content.
+* **Delete:** From the same ⋮ menu, click **Delete** (with confirmation).
+* **Duplicate:** From the ⋮ menu, click **Duplicate** to clone any item instantly.
+* **Favorite:** From the ⋮ menu, toggle **Add/Remove favorite** to pin items to the top of your library.
 * **Search:** Type in the top search bar to filter your library by title or content.
 
-### 3. Organizing with Drag & Drop
+### 4. Organizing with Drag & Drop
 Drag items to reorder them:
 * *Top of item:* Insert **before**.
 * *Bottom of item:* Insert **after**.
 * *Center of folder:* Move **inside** the folder.
 
-### 4. Using Smart Variables
+### 5. Using Smart Variables
 Create dynamic templates using double curly braces `{{...}}`. You can define **default values** using the pipe `|` symbol.
 
 **Example Prompt:**
@@ -95,15 +104,16 @@ Create dynamic templates using double curly braces `{{...}}`. You can define **d
 5. **Large Input:** The input is a resizable text area, ideal for pasting long context.
 6. **Keyboard:** `Ctrl + Enter` / `Cmd + Enter` to confirm · `Escape` to cancel.
 
-### 5. Injection
+### 6. Injection
 Click the ➤ **send** button or use copy to clipboard. The extension automatically detects the active chat input on the current page and injects the final text with all variables replaced.
 
-### 6. Backup & Restore
-* **Export:** Click the 💾 save button to download a `.json` backup of your entire library.
-* **Import:** Click the 📥 upload button and select a previously exported file to restore.
+### 7. Backup & Restore
+* **Export:** Click the 💾 save button to download a `.json` backup of the active library (prompts + variable history + library name).
+* **Import:** Click the 📥 upload button and select a previously exported file. You'll be asked whether to import it as a **new library** (recommended) or to **replace** the current one.
 
-### 7. Dark Mode
-Click the 🌙 moon icon in the toolbar to toggle dark mode. Your preference is saved automatically.
+### 8. Dark Mode & Language
+* Click the 🌙 moon icon in the toolbar to toggle dark mode. Your preference is saved automatically.
+* Click the 🌐 globe icon to switch the interface language between **Español**, **English** and **Català**. The choice is persisted across sessions.
 
 ## 🏗️ Project Structure
 
@@ -114,7 +124,9 @@ universal-prompt-library/
 ├── background.js           # Service worker (opens side panel on click)
 ├── content.js              # Content script (injection engine)
 ├── sidepanel.html          # Side panel UI structure
-├── sidepanel.js            # Main application logic
+├── sidepanel.js            # Main application logic (libraries, tree, variables)
+├── i18n.js                 # Translation loader and t() helper
+├── i18n/                   # Locale files (es.json, en.json, ca.json)
 ├── styles.css              # All styles including dark mode
 └── images/                 # Extension icons (16, 32, 48, 128px)
 ```
