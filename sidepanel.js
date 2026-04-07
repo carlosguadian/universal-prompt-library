@@ -193,7 +193,7 @@ function createActionBtn(iconName, onClick) {
 
 // --- MENÚ CONTEXTUAL (⋮) ---
 function toggleContextMenu(wrapper, node) {
-  // Cerrar cualquier menú abierto
+  // Cerrar cualquier menú abierto en otro nodo
   if (openContextMenu && openContextMenu !== wrapper) {
     const existing = openContextMenu.querySelector('.context-menu');
     if (existing) existing.remove();
@@ -209,33 +209,13 @@ function toggleContextMenu(wrapper, node) {
   menu = document.createElement('div');
   menu.className = 'context-menu open';
 
-  const items = [
-    {
-      icon: node.isFavorite ? 'star' : 'star_border',
-      label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
-      action: () => toggleFavorite(node.id)
-    },
-    {
-      icon: 'file_copy',
-      label: 'Duplicar',
-      action: () => duplicateNode(node.id)
-    },
-    {
-      icon: 'edit',
-      label: 'Editar',
-      action: () => openModal(node.type, node.id)
-    },
-    {
-      icon: 'delete',
-      label: 'Eliminar',
-      danger: true,
-      action: () => deleteNode(node.id)
-    }
-  ];
+  const otherLibraries = Object.entries(libraries).filter(([id]) => id !== activeLibraryId);
+  const canMove = otherLibraries.length > 0;
 
-  items.forEach(({ icon, label, danger, action }) => {
+  // Helper para crear un item del menú
+  const createItem = ({ icon, label, danger, action, isSubItem, expandable }) => {
     const item = document.createElement('div');
-    item.className = 'context-menu-item' + (danger ? ' danger' : '');
+    item.className = 'context-menu-item' + (danger ? ' danger' : '') + (isSubItem ? ' sub-item' : '');
 
     const iconEl = document.createElement('span');
     iconEl.className = 'material-icons';
@@ -244,20 +224,138 @@ function toggleContextMenu(wrapper, node) {
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
+    labelEl.style.flex = '1';
 
     item.append(iconEl, labelEl);
+
+    if (expandable) {
+      const arrow = document.createElement('span');
+      arrow.className = 'material-icons expand-arrow';
+      arrow.style.fontSize = '16px';
+      arrow.style.color = '#999';
+      arrow.textContent = 'expand_more';
+      item.appendChild(arrow);
+    }
+
     item.onmousedown = (e) => e.stopPropagation();
     item.onclick = (e) => {
       e.stopPropagation();
-      menu.remove();
-      openContextMenu = null;
-      action();
+      action(item);
     };
-    menu.appendChild(item);
-  });
+    return item;
+  };
+
+  // 1. Favorito
+  menu.appendChild(createItem({
+    icon: node.isFavorite ? 'star' : 'star_border',
+    label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+    action: () => { closeAllContextMenus(); toggleFavorite(node.id); }
+  }));
+
+  // 2. Duplicar
+  menu.appendChild(createItem({
+    icon: 'file_copy',
+    label: 'Duplicar',
+    action: () => { closeAllContextMenus(); duplicateNode(node.id); }
+  }));
+
+  // 3. Mover a biblioteca... (con expansión inline)
+  if (canMove) {
+    const moveItem = createItem({
+      icon: 'drive_file_move',
+      label: 'Mover a biblioteca…',
+      expandable: true,
+      action: (itemEl) => {
+        // Toggle: si ya está expandido, colapsar
+        const isExpanded = itemEl.classList.contains('expanded');
+        // Limpiar cualquier expansión previa
+        menu.querySelectorAll('.sub-item').forEach(el => el.remove());
+        menu.querySelectorAll('.context-menu-item.expanded').forEach(el => {
+          el.classList.remove('expanded');
+          const arr = el.querySelector('.expand-arrow');
+          if (arr) arr.textContent = 'expand_more';
+        });
+
+        if (isExpanded) return; // ya estaba abierto: solo cerramos
+
+        itemEl.classList.add('expanded');
+        const arr = itemEl.querySelector('.expand-arrow');
+        if (arr) arr.textContent = 'expand_less';
+
+        // Insertar items de bibliotecas destino justo después
+        let insertAfter = itemEl;
+        otherLibraries.forEach(([id, lib]) => {
+          const subItem = createItem({
+            icon: 'folder_special',
+            label: lib.name,
+            isSubItem: true,
+            action: () => {
+              closeAllContextMenus();
+              moveNodeToLibrary(node.id, id);
+            }
+          });
+          insertAfter.after(subItem);
+          insertAfter = subItem;
+        });
+      }
+    });
+    menu.appendChild(moveItem);
+  }
+
+  // 4. Editar
+  menu.appendChild(createItem({
+    icon: 'edit',
+    label: 'Editar',
+    action: () => { closeAllContextMenus(); openModal(node.type, node.id); }
+  }));
+
+  // 5. Eliminar
+  menu.appendChild(createItem({
+    icon: 'delete',
+    label: 'Eliminar',
+    danger: true,
+    action: () => { closeAllContextMenus(); deleteNode(node.id); }
+  }));
 
   wrapper.appendChild(menu);
   openContextMenu = wrapper;
+}
+
+function moveNodeToLibrary(nodeId, targetLibraryId) {
+  if (!libraries[targetLibraryId] || targetLibraryId === activeLibraryId) return;
+
+  // Extraer el nodo (con todos sus hijos) de la biblioteca actual
+  let extracted = null;
+  const remove = (nodes) => {
+    const idx = nodes.findIndex(n => n.id === nodeId);
+    if (idx > -1) {
+      extracted = nodes[idx];
+      nodes.splice(idx, 1);
+      return true;
+    }
+    for (const n of nodes) {
+      if (n.children && remove(n.children)) return true;
+    }
+    return false;
+  };
+  remove(treeData);
+
+  if (!extracted) return;
+
+  // Insertar en la raíz de la biblioteca destino
+  if (!Array.isArray(libraries[targetLibraryId].prompts)) {
+    libraries[targetLibraryId].prompts = [];
+  }
+  libraries[targetLibraryId].prompts.push(extracted);
+  libraries[targetLibraryId].lastModified = Date.now();
+
+  // Guardar ambas bibliotecas
+  saveData();
+  renderTree();
+
+  const targetName = libraries[targetLibraryId].name;
+  const itemLabel = extracted.type === 'folder' ? 'Carpeta' : 'Prompt';
+  showToast(`✓ ${itemLabel} movido a "${targetName}"`);
 }
 
 function closeAllContextMenus() {
