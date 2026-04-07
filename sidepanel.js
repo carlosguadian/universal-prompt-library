@@ -209,6 +209,9 @@ function toggleContextMenu(wrapper, node) {
   menu = document.createElement('div');
   menu.className = 'context-menu open';
 
+  const otherLibraries = Object.entries(libraries).filter(([id]) => id !== activeLibraryId);
+  const canMove = otherLibraries.length > 0;
+
   const items = [
     {
       icon: node.isFavorite ? 'star' : 'star_border',
@@ -219,7 +222,19 @@ function toggleContextMenu(wrapper, node) {
       icon: 'file_copy',
       label: 'Duplicar',
       action: () => duplicateNode(node.id)
-    },
+    }
+  ];
+
+  if (canMove) {
+    items.push({
+      icon: 'drive_file_move',
+      label: 'Mover a biblioteca…',
+      hasSubmenu: true,
+      action: () => showMoveSubmenu(menu, node, otherLibraries)
+    });
+  }
+
+  items.push(
     {
       icon: 'edit',
       label: 'Editar',
@@ -231,9 +246,16 @@ function toggleContextMenu(wrapper, node) {
       danger: true,
       action: () => deleteNode(node.id)
     }
-  ];
+  );
 
-  items.forEach(({ icon, label, danger, action }) => {
+  renderContextMenuItems(menu, items);
+  wrapper.appendChild(menu);
+  openContextMenu = wrapper;
+}
+
+function renderContextMenuItems(menu, items) {
+  menu.innerHTML = '';
+  items.forEach(({ icon, label, danger, hasSubmenu, action }) => {
     const item = document.createElement('div');
     item.className = 'context-menu-item' + (danger ? ' danger' : '');
 
@@ -244,20 +266,134 @@ function toggleContextMenu(wrapper, node) {
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
+    labelEl.style.flex = '1';
+
+    item.append(iconEl, labelEl);
+
+    if (hasSubmenu) {
+      const arrow = document.createElement('span');
+      arrow.className = 'material-icons';
+      arrow.style.fontSize = '16px';
+      arrow.style.color = '#999';
+      arrow.textContent = 'chevron_right';
+      item.appendChild(arrow);
+    }
+
+    item.onmousedown = (e) => e.stopPropagation();
+    item.onclick = (e) => {
+      e.stopPropagation();
+      if (hasSubmenu) {
+        action(); // No cerrar el menú, solo cambiar contenido
+      } else {
+        const wrapper = openContextMenu;
+        if (wrapper) {
+          const m = wrapper.querySelector('.context-menu');
+          if (m) m.remove();
+        }
+        openContextMenu = null;
+        action();
+      }
+    };
+    menu.appendChild(item);
+  });
+}
+
+function showMoveSubmenu(menu, node, otherLibraries) {
+  menu.innerHTML = '';
+
+  // Cabecera con botón "atrás"
+  const header = document.createElement('div');
+  header.className = 'context-menu-item';
+  header.style.fontWeight = '500';
+  header.style.borderBottom = '1px solid #eee';
+
+  const backIcon = document.createElement('span');
+  backIcon.className = 'material-icons';
+  backIcon.style.fontSize = '16px';
+  backIcon.textContent = 'chevron_left';
+
+  const backLabel = document.createElement('span');
+  backLabel.textContent = 'Mover a…';
+
+  header.append(backIcon, backLabel);
+  header.onmousedown = (e) => e.stopPropagation();
+  header.onclick = (e) => {
+    e.stopPropagation();
+    // Volver a abrir el menú principal
+    const wrapper = openContextMenu;
+    if (wrapper) {
+      const m = wrapper.querySelector('.context-menu');
+      if (m) m.remove();
+      openContextMenu = null;
+      toggleContextMenu(wrapper, node);
+    }
+  };
+  menu.appendChild(header);
+
+  // Lista de bibliotecas destino
+  otherLibraries.forEach(([id, lib]) => {
+    const item = document.createElement('div');
+    item.className = 'context-menu-item';
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'material-icons';
+    iconEl.style.fontSize = '16px';
+    iconEl.textContent = 'folder_special';
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = lib.name;
 
     item.append(iconEl, labelEl);
     item.onmousedown = (e) => e.stopPropagation();
     item.onclick = (e) => {
       e.stopPropagation();
-      menu.remove();
+      const wrapper = openContextMenu;
+      if (wrapper) {
+        const m = wrapper.querySelector('.context-menu');
+        if (m) m.remove();
+      }
       openContextMenu = null;
-      action();
+      moveNodeToLibrary(node.id, id);
     };
     menu.appendChild(item);
   });
+}
 
-  wrapper.appendChild(menu);
-  openContextMenu = wrapper;
+function moveNodeToLibrary(nodeId, targetLibraryId) {
+  if (!libraries[targetLibraryId] || targetLibraryId === activeLibraryId) return;
+
+  // Extraer el nodo (con todos sus hijos) de la biblioteca actual
+  let extracted = null;
+  const remove = (nodes) => {
+    const idx = nodes.findIndex(n => n.id === nodeId);
+    if (idx > -1) {
+      extracted = nodes[idx];
+      nodes.splice(idx, 1);
+      return true;
+    }
+    for (const n of nodes) {
+      if (n.children && remove(n.children)) return true;
+    }
+    return false;
+  };
+  remove(treeData);
+
+  if (!extracted) return;
+
+  // Insertar en la raíz de la biblioteca destino
+  if (!Array.isArray(libraries[targetLibraryId].prompts)) {
+    libraries[targetLibraryId].prompts = [];
+  }
+  libraries[targetLibraryId].prompts.push(extracted);
+  libraries[targetLibraryId].lastModified = Date.now();
+
+  // Guardar ambas bibliotecas
+  saveData();
+  renderTree();
+
+  const targetName = libraries[targetLibraryId].name;
+  const itemLabel = extracted.type === 'folder' ? 'Carpeta' : 'Prompt';
+  showToast(`✓ ${itemLabel} movido a "${targetName}"`);
 }
 
 function closeAllContextMenus() {
