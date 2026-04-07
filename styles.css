@@ -512,6 +512,49 @@ textarea { height: 150px; resize: vertical; font-size: 13px; line-height: 1.4; }
 .library-dropdown-item.new-library { color: #10a37f; }
 .library-dropdown-item.new-library .material-icons { color: #10a37f; }
 
+/* --- LANGUAGE SELECTOR --- */
+.lang-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.lang-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  min-width: 140px;
+  padding: 4px 0;
+}
+
+.lang-dropdown.hidden { display: none; }
+
+.lang-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+}
+
+.lang-dropdown-item:hover { background: #f0f0f0; }
+.lang-dropdown-item.active { background: #eafff8; color: #10a37f; font-weight: 500; }
+
+body.dark-mode .lang-dropdown {
+  background: #2a2a3e;
+  border-color: #3a3a5a;
+}
+body.dark-mode .lang-dropdown-item { color: #ccc; }
+body.dark-mode .lang-dropdown-item:hover { background: #1f2b47; }
+body.dark-mode .lang-dropdown-item.active { background: #0a3d2e; color: #10a37f; }
+
 /* --- CONTEXT MENU (⋮) --- */
 .more-wrapper {
   position: relative;

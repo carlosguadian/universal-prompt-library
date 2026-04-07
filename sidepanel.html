@@ -17,14 +17,18 @@
     </div>
     <input type="text" id="searchInput" placeholder="Buscar prompts...">
     <div class="actions">
-      <button id="addFolderBtn" title="Nueva Carpeta"><span class="material-icons">create_new_folder</span></button>
-      <button id="addPromptBtn" title="Nuevo Prompt"><span class="material-icons">note_add</span></button>
-      <button id="exportBtn" title="Backup"><span class="material-icons">save_alt</span></button>
-      <button id="importBtn" title="Restaurar"><span class="material-icons">file_upload</span></button>
-      <button id="darkModeBtn" title="Modo oscuro"><span class="material-icons">dark_mode</span></button>
+      <button id="addFolderBtn"><span class="material-icons">create_new_folder</span></button>
+      <button id="addPromptBtn"><span class="material-icons">note_add</span></button>
+      <button id="exportBtn"><span class="material-icons">save_alt</span></button>
+      <button id="importBtn"><span class="material-icons">file_upload</span></button>
+      <button id="darkModeBtn"><span class="material-icons">dark_mode</span></button>
+      <div class="lang-selector">
+        <button id="langBtn"><span class="material-icons">language</span></button>
+        <div id="langDropdown" class="lang-dropdown hidden"></div>
+      </div>
       <input type="file" id="fileInput" style="display:none" accept=".json">
     </div>
-    
+
     <div id="lastModified" style="font-size: 10px; color: #888; width: 100%; text-align: right; margin-top: 6px;">
       Última actualización: --
     </div>
@@ -45,11 +49,11 @@
     </div>
   </div>
   <div class="footer">
-  Si encuentras útil la extensión y te interesa la IA <a href="https://carlosguadian.substack.com/subscribe" target="_blank" class="promo-link">
-      📬 suscríbete a <b>CluPad</b>
+  <span id="footerPromo">Si encuentras útil la extensión y te interesa la IA</span> <a href="https://carlosguadian.substack.com/subscribe" target="_blank" class="promo-link">
+      <span id="footerSubscribe">📬 suscríbete a</span> <b>CluPad</b>
     </a>
   	<div class="credits">
-    <span>Hecho con ❤️ por <b>Carlos Guadián Orta</b></span>
+    <span><span id="footerMadeBy">Hecho con ❤️ por</span> <b>Carlos Guadián Orta</b></span>
     <span class="separator">•</span>
     <a href="https://github.com/carlosguadian/universal-prompt-library" target="_blank">GitHub</a>
     </div>
@@ -58,10 +62,10 @@
   <div id="varModal" class="modal hidden">
     <div class="modal-content var-modal-content">
       <div class="var-modal-header">
-        <h3>Variable: <span id="varNameTitle"></span></h3>
+        <h3><span id="varModalTitleLabel">Variable:</span> <span id="varNameTitle"></span></h3>
         <span id="varStepIndicator" class="var-step-indicator"></span>
       </div>
-      <p class="var-modal-description">Introduce o pega el contenido para esta variable:</p>
+      <p id="varModalDescription" class="var-modal-description">Introduce o pega el contenido para esta variable:</p>
       <div id="chipsContainer" class="history-container"></div>
       <textarea id="dynamicVarInput" spellcheck="false"></textarea>
       <div class="var-modal-actions">
@@ -71,10 +75,11 @@
           <button id="dynamicConfirmBtn" class="var-btn-confirm">Insertar</button>
         </div>
       </div>
-      <div class="var-modal-hint">Ctrl + Enter para <span id="varHintAction">insertar</span></div>
+      <div class="var-modal-hint"><span id="varModalHintPrefix">Ctrl + Enter para</span> <span id="varHintAction">insertar</span></div>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

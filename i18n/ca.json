@@ -1,0 +1,94 @@
+{
+  "lang": {
+    "name": "Català",
+    "code": "ca"
+  },
+  "header": {
+    "search": "Cerca prompts...",
+    "newFolder": "Nova Carpeta",
+    "newPrompt": "Nou Prompt",
+    "backup": "Còpia de seguretat",
+    "restore": "Restaura",
+    "darkMode": "Mode fosc",
+    "lightMode": "Mode clar",
+    "language": "Idioma",
+    "lastModified": "Última actualització: {date}",
+    "lastModifiedNever": "Última actualització: Mai"
+  },
+  "library": {
+    "default": "La Meva Biblioteca",
+    "newLibrary": "Nova biblioteca",
+    "newLibraryPrompt": "Nom de la nova biblioteca:",
+    "renamePrompt": "Nou nom:",
+    "rename": "Reanomena",
+    "delete": "Elimina",
+    "deleteConfirm": "Vols eliminar la biblioteca \"{name}\" i tots els seus prompts?",
+    "deleteLastError": "No pots eliminar l'única biblioteca. Crea'n una altra primer.",
+    "created": "✓ Biblioteca creada",
+    "renamed": "✓ Reanomenada",
+    "deleted": "✓ Eliminada",
+    "imported": "✓ Biblioteca importada",
+    "imported_default": "Importada"
+  },
+  "node": {
+    "addFavorite": "Afegeix a preferits",
+    "removeFavorite": "Treu de preferits",
+    "duplicate": "Duplica",
+    "moveTo": "Mou a biblioteca…",
+    "edit": "Edita",
+    "delete": "Elimina",
+    "deleteConfirm": "Vols eliminar aquest element?",
+    "duplicated": "✓ Duplicat",
+    "favoriteAdded": "⭐ Afegit a preferits",
+    "favoriteRemoved": "Tret de preferits",
+    "movedFolder": "✓ Carpeta moguda a \"{name}\"",
+    "movedPrompt": "✓ Prompt mogut a \"{name}\""
+  },
+  "modal": {
+    "newFolder": "Nova Carpeta",
+    "editFolder": "Edita Carpeta",
+    "newPrompt": "Nou Prompt",
+    "editPrompt": "Edita Prompt",
+    "title": "Títol",
+    "promptPlaceholder": "Escriu el teu prompt aquí... Fes servir {{variable}} per a dades dinàmiques.",
+    "save": "Desa",
+    "cancel": "Cancel·la",
+    "titleRequired": "El títol és obligatori"
+  },
+  "var": {
+    "title": "Variable:",
+    "step": "Pas {current} de {total}",
+    "description": "Introdueix o enganxa el contingut per a aquesta variable:",
+    "history": "Historial recent:",
+    "back": "← Enrere",
+    "cancel": "Cancel·la",
+    "next": "Següent",
+    "insert": "Insereix",
+    "hint": "Ctrl + Enter per {action}",
+    "hintInsert": "inserir",
+    "hintNext": "avançar",
+    "defaultPlaceholder": "Per defecte: {value}",
+    "emptyPlaceholder": "Escriu o enganxa el teu text aquí..."
+  },
+  "inject": {
+    "noContent": "Aquest prompt no té contingut. Edita'l per afegir text.",
+    "reloadNeeded": "Error: Recarrega la pàgina (F5) per reconnectar l'extensió.",
+    "noActiveTab": "Error: No s'ha trobat la pestanya activa.",
+    "unexpectedError": "Error inesperat: {message}"
+  },
+  "clipboard": {
+    "copied": "✓ Copiat",
+    "error": "No s'ha pogut copiar al porta-retalls."
+  },
+  "import": {
+    "invalidFormat": "Format de fitxer no vàlid. S'espera un array de prompts o un objecte amb { prompts, variableHistory }.",
+    "invalidNodes": "El fitxer conté nodes amb estructura incorrecta. Cada node necessita: id, title i type.",
+    "invalidJson": "Error en llegir el fitxer: JSON no vàlid.",
+    "askDestination": "Vols importar com a nova biblioteca \"{name}\"?\n\nAccepta: crea una nova biblioteca.\nCancel·la: reemplaça la biblioteca actual."
+  },
+  "footer": {
+    "promo": "Si trobes útil l'extensió i t'interessa la IA",
+    "subscribe": "📬 subscriu-te a",
+    "madeBy": "Fet amb ❤️ per"
+  }
+}
