@@ -10,12 +10,103 @@ let lastModifiedTimestamp = null;
 let openContextMenu = null; // Referencia al menú contextual abierto (para cerrarlo al hacer clic fuera)
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await initI18n();
   await loadData();
   loadDarkMode();
+  applyTranslations();
+  renderLangSelector();
   renderTree();
   renderLibrarySelector();
   setupEventListeners();
 });
+
+// --- I18N HELPERS ---
+function applyTranslations() {
+  // Header inputs / buttons
+  const search = document.getElementById('searchInput');
+  if (search) search.placeholder = t('header.search');
+  const setTitle = (id, key) => { const el = document.getElementById(id); if (el) el.title = t(key); };
+  setTitle('addFolderBtn', 'header.newFolder');
+  setTitle('addPromptBtn', 'header.newPrompt');
+  setTitle('exportBtn', 'header.backup');
+  setTitle('importBtn', 'header.restore');
+  setTitle('langBtn', 'header.language');
+  // Dark mode title is handled by updateDarkModeIcon
+
+  // Modal de edición
+  const itemTitle = document.getElementById('itemTitle');
+  if (itemTitle) itemTitle.placeholder = t('modal.title');
+  const itemContent = document.getElementById('itemContent');
+  if (itemContent) itemContent.placeholder = t('modal.promptPlaceholder');
+  const saveBtn = document.getElementById('saveBtn');
+  if (saveBtn) saveBtn.textContent = t('modal.save');
+  const cancelBtn = document.getElementById('cancelBtn');
+  if (cancelBtn) cancelBtn.textContent = t('modal.cancel');
+
+  // Modal de variables
+  const setText = (id, key) => { const el = document.getElementById(id); if (el) el.textContent = t(key); };
+  setText('varModalTitleLabel', 'var.title');
+  setText('varModalDescription', 'var.description');
+  const dCancel = document.getElementById('dynamicCancelBtn');
+  if (dCancel) dCancel.textContent = t('var.cancel');
+  const dBack = document.getElementById('dynamicBackBtn');
+  if (dBack) dBack.textContent = t('var.back');
+  // Prefijo del hint Ctrl+Enter — derivar de var.hint quitando {action}
+  const hintPrefix = document.getElementById('varModalHintPrefix');
+  if (hintPrefix) hintPrefix.textContent = t('var.hint', { action: '' }).trim();
+
+  // Footer
+  setText('footerPromo', 'footer.promo');
+  setText('footerSubscribe', 'footer.subscribe');
+  setText('footerMadeBy', 'footer.madeBy');
+
+  // Dark mode icon (refrescar título según locale actual)
+  updateDarkModeIcon(document.body.classList.contains('dark-mode'));
+
+  // Last modified label
+  updateLastModifiedUI();
+}
+
+function renderLangSelector() {
+  const dropdown = document.getElementById('langDropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = '';
+  const current = getCurrentLocale();
+  const langs = [
+    { code: 'es', label: 'Español' },
+    { code: 'en', label: 'English' },
+    { code: 'ca', label: 'Català' }
+  ];
+  langs.forEach(({ code, label }) => {
+    const item = document.createElement('div');
+    item.className = 'lang-dropdown-item' + (code === current ? ' active' : '');
+    const icon = document.createElement('span');
+    icon.className = 'material-icons';
+    icon.style.fontSize = '16px';
+    icon.textContent = code === current ? 'check' : 'language';
+    const name = document.createElement('span');
+    name.textContent = label;
+    item.append(icon, name);
+    item.onclick = async (e) => {
+      e.stopPropagation();
+      await setLocale(code);
+      applyTranslations();
+      renderLangSelector();
+      renderLibrarySelector();
+      renderTree();
+      closeLangDropdown();
+    };
+    dropdown.appendChild(item);
+  });
+}
+
+function toggleLangDropdown() {
+  document.getElementById('langDropdown').classList.toggle('hidden');
+}
+
+function closeLangDropdown() {
+  document.getElementById('langDropdown').classList.add('hidden');
+}
 
 // --- DARK MODE ---
 function loadDarkMode() {
@@ -37,7 +128,7 @@ function updateDarkModeIcon(isDark) {
   const btn = document.getElementById('darkModeBtn');
   if (btn) {
     btn.querySelector('.material-icons').innerText = isDark ? 'light_mode' : 'dark_mode';
-    btn.title = isDark ? 'Modo claro' : 'Modo oscuro';
+    btn.title = isDark ? t('header.lightMode') : t('header.darkMode');
   }
 }
 
@@ -248,14 +339,14 @@ function toggleContextMenu(wrapper, node) {
   // 1. Favorito
   menu.appendChild(createItem({
     icon: node.isFavorite ? 'star' : 'star_border',
-    label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+    label: node.isFavorite ? t('node.removeFavorite') : t('node.addFavorite'),
     action: () => { closeAllContextMenus(); toggleFavorite(node.id); }
   }));
 
   // 2. Duplicar
   menu.appendChild(createItem({
     icon: 'file_copy',
-    label: 'Duplicar',
+    label: t('node.duplicate'),
     action: () => { closeAllContextMenus(); duplicateNode(node.id); }
   }));
 
@@ -263,7 +354,7 @@ function toggleContextMenu(wrapper, node) {
   if (canMove) {
     const moveItem = createItem({
       icon: 'drive_file_move',
-      label: 'Mover a biblioteca…',
+      label: t('node.moveTo'),
       expandable: true,
       action: (itemEl) => {
         // Toggle: si ya está expandido, colapsar
@@ -305,14 +396,14 @@ function toggleContextMenu(wrapper, node) {
   // 4. Editar
   menu.appendChild(createItem({
     icon: 'edit',
-    label: 'Editar',
+    label: t('node.edit'),
     action: () => { closeAllContextMenus(); openModal(node.type, node.id); }
   }));
 
   // 5. Eliminar
   menu.appendChild(createItem({
     icon: 'delete',
-    label: 'Eliminar',
+    label: t('node.delete'),
     danger: true,
     action: () => { closeAllContextMenus(); deleteNode(node.id); }
   }));
@@ -354,8 +445,8 @@ function moveNodeToLibrary(nodeId, targetLibraryId) {
   renderTree();
 
   const targetName = libraries[targetLibraryId].name;
-  const itemLabel = extracted.type === 'folder' ? 'Carpeta' : 'Prompt';
-  showToast(`✓ ${itemLabel} movido a "${targetName}"`);
+  const key = extracted.type === 'folder' ? 'node.movedFolder' : 'node.movedPrompt';
+  showToast(t(key, { name: targetName }));
 }
 
 function closeAllContextMenus() {
@@ -493,7 +584,7 @@ async function handleInject(node) {
     let content = node.content;
 
     if (!content || typeof content !== 'string' || content.trim() === '') {
-      alert('Este prompt no tiene contenido. Edítalo para añadir texto.');
+      alert(t('inject.noContent'));
       return;
     }
 
@@ -561,14 +652,14 @@ async function handleInject(node) {
     chrome.tabs.sendMessage(tab.id, { action: "injectPrompt", text: content })
       .catch(error => {
         console.error("Error sendMessage:", error);
-        alert("Error: Recarga la página (F5) para reconectar la extensión.");
+        alert(t('inject.reloadNeeded'));
       });
   } else {
-    alert('Error: No se encontró la pestaña activa.');
+    alert(t('inject.noActiveTab'));
   }
   } catch (err) {
     console.error('Error en handleInject:', err);
-    alert('Error inesperado: ' + err.message);
+    alert(t('inject.unexpectedError', { message: err.message }));
   }
 }
 
@@ -604,7 +695,7 @@ function renderChips(varName) {
 
   const label = document.createElement('span');
   label.className = 'history-label';
-  label.textContent = 'Historial reciente:';
+  label.textContent = t('var.history');
   container.appendChild(label);
 
   historyOptions.forEach((opt, index) => {
@@ -648,20 +739,20 @@ function askUserForValue(varName, defaultValue, currentIndex, totalVars) {
 
     // Actualizar contenido dinámico (sin recrear estructura)
     document.getElementById('varNameTitle').textContent = varName;
-    document.getElementById('varStepIndicator').textContent = `Paso ${currentIndex + 1} de ${totalVars}`;
+    document.getElementById('varStepIndicator').textContent = t('var.step', { current: currentIndex + 1, total: totalVars });
 
     const input = document.getElementById('dynamicVarInput');
     input.value = defaultValue || '';
-    input.placeholder = defaultValue ? 'Por defecto: ' + defaultValue : 'Escribe o pega aquí tu texto...';
+    input.placeholder = defaultValue ? t('var.defaultPlaceholder', { value: defaultValue }) : t('var.emptyPlaceholder');
     input.style.borderColor = '';
 
     const confirmBtn = document.getElementById('dynamicConfirmBtn');
-    confirmBtn.textContent = isLastStep ? 'Insertar' : 'Siguiente';
+    confirmBtn.textContent = isLastStep ? t('var.insert') : t('var.next');
 
     const backBtn = document.getElementById('dynamicBackBtn');
     backBtn.classList.toggle('hidden', currentIndex === 0);
 
-    document.getElementById('varHintAction').textContent = isLastStep ? 'insertar' : 'avanzar';
+    document.getElementById('varHintAction').textContent = isLastStep ? t('var.hintInsert') : t('var.hintNext');
 
     renderChips(varName);
 
@@ -746,7 +837,7 @@ function toggleFavorite(id) {
   node.isFavorite = !node.isFavorite;
   saveData();
   renderTree();
-  showToast(node.isFavorite ? '⭐ Añadido a favoritos' : 'Eliminado de favoritos');
+  showToast(node.isFavorite ? t('node.favoriteAdded') : t('node.favoriteRemoved'));
 }
 
 function duplicateNode(id) {
@@ -777,11 +868,11 @@ function duplicateNode(id) {
 
   saveData();
   renderTree();
-  showToast('✓ Duplicado');
+  showToast(t('node.duplicated'));
 }
 
 function deleteNode(id) {
-  if(confirm('¿Eliminar este elemento?')) {
+  if(confirm(t('node.deleteConfirm'))) {
     const remove = (nodes) => {
       const idx = nodes.findIndex(n => n.id === id);
       if (idx > -1) { nodes.splice(idx, 1); return true; }
@@ -826,7 +917,7 @@ async function loadData() {
     const defaultId = crypto.randomUUID();
     libraries = {
       [defaultId]: {
-        name: 'Mi Biblioteca',
+        name: t('library.default'),
         prompts: legacyTree,
         lastModified: legacyTimestamp
       }
@@ -861,7 +952,7 @@ function saveData(updateTimestamp = true) {
 // --- GESTIÓN DE BIBLIOTECAS ---
 function renderLibrarySelector() {
   const nameEl = document.getElementById('libraryName');
-  if (nameEl) nameEl.textContent = libraries[activeLibraryId]?.name || 'Mi Biblioteca';
+  if (nameEl) nameEl.textContent = libraries[activeLibraryId]?.name || t('library.default');
 
   const dropdown = document.getElementById('libraryDropdown');
   if (!dropdown) return;
@@ -887,13 +978,13 @@ function renderLibrarySelector() {
     const editIcon = document.createElement('span');
     editIcon.className = 'material-icons library-item-action';
     editIcon.textContent = 'edit';
-    editIcon.title = 'Renombrar';
+    editIcon.title = t('library.rename');
     editIcon.onclick = (e) => { e.stopPropagation(); renameLibrary(id); };
 
     const deleteIcon = document.createElement('span');
     deleteIcon.className = 'material-icons library-item-action danger';
     deleteIcon.textContent = 'delete';
-    deleteIcon.title = 'Eliminar';
+    deleteIcon.title = t('library.delete');
     deleteIcon.onclick = (e) => { e.stopPropagation(); deleteLibrary(id); };
 
     actions.append(editIcon, deleteIcon);
@@ -916,7 +1007,7 @@ function renderLibrarySelector() {
   plusIcon.style.fontSize = '16px';
   plusIcon.textContent = 'add';
   const newLabel = document.createElement('span');
-  newLabel.textContent = 'Nueva biblioteca';
+  newLabel.textContent = t('library.newLibrary');
   newItem.append(plusIcon, newLabel);
   newItem.onclick = () => { createLibrary(); closeDropdown(); };
   dropdown.appendChild(newItem);
@@ -942,7 +1033,7 @@ function switchLibrary(id) {
 }
 
 function createLibrary() {
-  const name = prompt('Nombre de la nueva biblioteca:');
+  const name = prompt(t('library.newLibraryPrompt'));
   if (!name || !name.trim()) return;
   const id = crypto.randomUUID();
   libraries[id] = { name: name.trim(), prompts: [], lastModified: Date.now() };
@@ -953,27 +1044,27 @@ function createLibrary() {
   renderLibrarySelector();
   renderTree();
   updateLastModifiedUI();
-  showToast('✓ Biblioteca creada');
+  showToast(t('library.created'));
 }
 
 function renameLibrary(id) {
   const lib = libraries[id];
   if (!lib) return;
-  const newName = prompt('Nuevo nombre:', lib.name);
+  const newName = prompt(t('library.renamePrompt'), lib.name);
   if (!newName || !newName.trim()) return;
   lib.name = newName.trim();
   chrome.storage.local.set({ libraries });
   renderLibrarySelector();
-  showToast('✓ Renombrada');
+  showToast(t('library.renamed'));
 }
 
 function deleteLibrary(id) {
   if (Object.keys(libraries).length === 1) {
-    alert('No puedes eliminar la única biblioteca. Crea otra primero.');
+    alert(t('library.deleteLastError'));
     return;
   }
   const lib = libraries[id];
-  if (!confirm(`¿Eliminar la biblioteca "${lib.name}" y todos sus prompts?`)) return;
+  if (!confirm(t('library.deleteConfirm', { name: lib.name }))) return;
   delete libraries[id];
   if (activeLibraryId === id) {
     activeLibraryId = Object.keys(libraries)[0];
@@ -984,7 +1075,7 @@ function deleteLibrary(id) {
   renderLibrarySelector();
   renderTree();
   updateLastModifiedUI();
-  showToast('✓ Eliminada');
+  showToast(t('library.deleted'));
 }
 
 // NUEVA FUNCIÓN: Para formatear y mostrar la fecha
@@ -993,18 +1084,20 @@ function updateLastModifiedUI() {
   if (!displayElement) return;
 
   if (!lastModifiedTimestamp) {
-    displayElement.innerText = "Última actualización: Nunca";
+    displayElement.innerText = t('header.lastModifiedNever');
     return;
   }
 
-  // Formateamos la fecha al estilo local (ej: 20/2/2026, 16:24)
+  // Formateamos la fecha al estilo del locale activo
+  const localeMap = { es: 'es-ES', en: 'en-US', ca: 'ca-ES' };
+  const dateLocale = localeMap[getCurrentLocale()] || 'es-ES';
   const dateObj = new Date(lastModifiedTimestamp);
-  const formattedDate = dateObj.toLocaleString('es-ES', { 
-    day: '2-digit', month: '2-digit', year: 'numeric', 
-    hour: '2-digit', minute: '2-digit' 
+  const formattedDate = dateObj.toLocaleString(dateLocale, {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
   });
 
-  displayElement.innerText = `Última actualización: ${formattedDate}`;
+  displayElement.innerText = t('header.lastModified', { date: formattedDate });
 }
 function showToast(message) {
   const toast = document.createElement('div');
@@ -1016,9 +1109,9 @@ function showToast(message) {
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
-    showToast('✓ Copiado');
+    showToast(t('clipboard.copied'));
   }).catch(() => {
-    alert('No se pudo copiar al portapapeles.');
+    alert(t('clipboard.error'));
   });
 }
 
@@ -1034,9 +1127,19 @@ function setupEventListeners() {
     toggleDropdown();
   };
 
-  // Cerrar dropdown y menú contextual al hacer clic fuera
+  // Selector de idioma
+  const langBtn = document.getElementById('langBtn');
+  if (langBtn) {
+    langBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleLangDropdown();
+    };
+  }
+
+  // Cerrar dropdowns y menú contextual al hacer clic fuera
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.library-selector')) closeDropdown();
+    if (!e.target.closest('.lang-selector')) closeLangDropdown();
     if (!e.target.closest('.more-wrapper')) closeAllContextMenus();
   });
   document.getElementById('exportBtn').onclick = () => {
@@ -1073,7 +1176,7 @@ function setupEventListeners() {
           importedTree = parsed.prompts;
           importedHistory = parsed.variableHistory || null;
         } else {
-          alert('Formato de archivo no válido. Se espera un array de prompts o un objeto con { prompts, variableHistory }.');
+          alert(t('import.invalidFormat'));
           return;
         }
 
@@ -1085,17 +1188,13 @@ function setupEventListeners() {
         const validateTree = (nodes) => nodes.every(n => isValidNode(n) && (!n.children || validateTree(n.children)));
 
         if (!validateTree(importedTree)) {
-          alert('El archivo contiene nodos con estructura incorrecta. Cada nodo necesita: id, title y type.');
+          alert(t('import.invalidNodes'));
           return;
         }
 
         // Preguntar destino: nueva biblioteca o reemplazar la activa
-        const importedName = (parsed && parsed.libraryName) ? parsed.libraryName : 'Importada';
-        const choice = confirm(
-          `¿Importar como nueva biblioteca "${importedName}"?\n\n` +
-          `Aceptar: crear una nueva biblioteca.\n` +
-          `Cancelar: reemplazar la biblioteca actual.`
-        );
+        const importedName = (parsed && parsed.libraryName) ? parsed.libraryName : t('library.imported_default');
+        const choice = confirm(t('import.askDestination', { name: importedName }));
 
         if (choice) {
           // Crear nueva biblioteca
@@ -1120,9 +1219,9 @@ function setupEventListeners() {
         saveData();
         renderLibrarySelector();
         renderTree();
-        showToast('✓ Biblioteca importada');
+        showToast(t('library.imported'));
       } catch(err) {
-        alert('Error al leer el archivo: JSON no válido.');
+        alert(t('import.invalidJson'));
       }
     };
     reader.readAsText(file);
@@ -1134,7 +1233,7 @@ function setupEventListeners() {
   document.getElementById('saveBtn').onclick = () => {
     const title = document.getElementById('itemTitle').value;
     const content = document.getElementById('itemContent').value;
-    if(!title) return alert('El título es obligatorio');
+    if(!title) return alert(t('modal.titleRequired'));
     const type = document.getElementById('itemContent').style.display === 'none' ? 'folder' : 'prompt';
     saveItem(title, content, type);
     modal.classList.add('hidden');
@@ -1148,7 +1247,9 @@ function openModal(type, id = null) {
   const contentInput = document.getElementById('itemContent');
   modal.classList.remove('hidden');
   contentInput.style.display = type === 'folder' ? 'none' : 'block';
-  document.getElementById('modalTitle').innerText = id ? (type === 'folder' ? 'Editar Carpeta' : 'Editar Prompt') : (type === 'folder' ? 'Nueva Carpeta' : 'Nuevo Prompt');
+  document.getElementById('modalTitle').innerText = id
+    ? (type === 'folder' ? t('modal.editFolder') : t('modal.editPrompt'))
+    : (type === 'folder' ? t('modal.newFolder') : t('modal.newPrompt'));
   if (id) {
     const node = findNode(treeData, id);
     titleInput.value = node.title;

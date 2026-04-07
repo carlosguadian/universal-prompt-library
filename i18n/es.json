@@ -1,0 +1,94 @@
+{
+  "lang": {
+    "name": "Español",
+    "code": "es"
+  },
+  "header": {
+    "search": "Buscar prompts...",
+    "newFolder": "Nueva Carpeta",
+    "newPrompt": "Nuevo Prompt",
+    "backup": "Backup",
+    "restore": "Restaurar",
+    "darkMode": "Modo oscuro",
+    "lightMode": "Modo claro",
+    "language": "Idioma",
+    "lastModified": "Última actualización: {date}",
+    "lastModifiedNever": "Última actualización: Nunca"
+  },
+  "library": {
+    "default": "Mi Biblioteca",
+    "newLibrary": "Nueva biblioteca",
+    "newLibraryPrompt": "Nombre de la nueva biblioteca:",
+    "renamePrompt": "Nuevo nombre:",
+    "rename": "Renombrar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar la biblioteca \"{name}\" y todos sus prompts?",
+    "deleteLastError": "No puedes eliminar la única biblioteca. Crea otra primero.",
+    "created": "✓ Biblioteca creada",
+    "renamed": "✓ Renombrada",
+    "deleted": "✓ Eliminada",
+    "imported": "✓ Biblioteca importada",
+    "imported_default": "Importada"
+  },
+  "node": {
+    "addFavorite": "Añadir a favoritos",
+    "removeFavorite": "Quitar de favoritos",
+    "duplicate": "Duplicar",
+    "moveTo": "Mover a biblioteca…",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar este elemento?",
+    "duplicated": "✓ Duplicado",
+    "favoriteAdded": "⭐ Añadido a favoritos",
+    "favoriteRemoved": "Eliminado de favoritos",
+    "movedFolder": "✓ Carpeta movida a \"{name}\"",
+    "movedPrompt": "✓ Prompt movido a \"{name}\""
+  },
+  "modal": {
+    "newFolder": "Nueva Carpeta",
+    "editFolder": "Editar Carpeta",
+    "newPrompt": "Nuevo Prompt",
+    "editPrompt": "Editar Prompt",
+    "title": "Título",
+    "promptPlaceholder": "Escribe tu prompt aquí... Usa {{variable}} para datos dinámicos.",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "titleRequired": "El título es obligatorio"
+  },
+  "var": {
+    "title": "Variable:",
+    "step": "Paso {current} de {total}",
+    "description": "Introduce o pega el contenido para esta variable:",
+    "history": "Historial reciente:",
+    "back": "← Atrás",
+    "cancel": "Cancelar",
+    "next": "Siguiente",
+    "insert": "Insertar",
+    "hint": "Ctrl + Enter para {action}",
+    "hintInsert": "insertar",
+    "hintNext": "avanzar",
+    "defaultPlaceholder": "Por defecto: {value}",
+    "emptyPlaceholder": "Escribe o pega aquí tu texto..."
+  },
+  "inject": {
+    "noContent": "Este prompt no tiene contenido. Edítalo para añadir texto.",
+    "reloadNeeded": "Error: Recarga la página (F5) para reconectar la extensión.",
+    "noActiveTab": "Error: No se encontró la pestaña activa.",
+    "unexpectedError": "Error inesperado: {message}"
+  },
+  "clipboard": {
+    "copied": "✓ Copiado",
+    "error": "No se pudo copiar al portapapeles."
+  },
+  "import": {
+    "invalidFormat": "Formato de archivo no válido. Se espera un array de prompts o un objeto con { prompts, variableHistory }.",
+    "invalidNodes": "El archivo contiene nodos con estructura incorrecta. Cada nodo necesita: id, title y type.",
+    "invalidJson": "Error al leer el archivo: JSON no válido.",
+    "askDestination": "¿Importar como nueva biblioteca \"{name}\"?\n\nAceptar: crear una nueva biblioteca.\nCancelar: reemplazar la biblioteca actual."
+  },
+  "footer": {
+    "promo": "Si encuentras útil la extensión y te interesa la IA",
+    "subscribe": "📬 suscríbete a",
+    "madeBy": "Hecho con ❤️ por"
+  }
+}
