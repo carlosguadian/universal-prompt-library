@@ -193,7 +193,7 @@ function createActionBtn(iconName, onClick) {
 
 // --- MENÚ CONTEXTUAL (⋮) ---
 function toggleContextMenu(wrapper, node) {
-  // Cerrar cualquier menú abierto
+  // Cerrar cualquier menú abierto en otro nodo
   if (openContextMenu && openContextMenu !== wrapper) {
     const existing = openContextMenu.querySelector('.context-menu');
     if (existing) existing.remove();
@@ -212,52 +212,10 @@ function toggleContextMenu(wrapper, node) {
   const otherLibraries = Object.entries(libraries).filter(([id]) => id !== activeLibraryId);
   const canMove = otherLibraries.length > 0;
 
-  const items = [
-    {
-      icon: node.isFavorite ? 'star' : 'star_border',
-      label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
-      action: () => toggleFavorite(node.id)
-    },
-    {
-      icon: 'file_copy',
-      label: 'Duplicar',
-      action: () => duplicateNode(node.id)
-    }
-  ];
-
-  if (canMove) {
-    items.push({
-      icon: 'drive_file_move',
-      label: 'Mover a biblioteca…',
-      hasSubmenu: true,
-      action: () => showMoveSubmenu(menu, node, otherLibraries)
-    });
-  }
-
-  items.push(
-    {
-      icon: 'edit',
-      label: 'Editar',
-      action: () => openModal(node.type, node.id)
-    },
-    {
-      icon: 'delete',
-      label: 'Eliminar',
-      danger: true,
-      action: () => deleteNode(node.id)
-    }
-  );
-
-  renderContextMenuItems(menu, items);
-  wrapper.appendChild(menu);
-  openContextMenu = wrapper;
-}
-
-function renderContextMenuItems(menu, items) {
-  menu.innerHTML = '';
-  items.forEach(({ icon, label, danger, hasSubmenu, action }) => {
+  // Helper para crear un item del menú
+  const createItem = ({ icon, label, danger, action, isSubItem, expandable }) => {
     const item = document.createElement('div');
-    item.className = 'context-menu-item' + (danger ? ' danger' : '');
+    item.className = 'context-menu-item' + (danger ? ' danger' : '') + (isSubItem ? ' sub-item' : '');
 
     const iconEl = document.createElement('span');
     iconEl.className = 'material-icons';
@@ -270,93 +228,97 @@ function renderContextMenuItems(menu, items) {
 
     item.append(iconEl, labelEl);
 
-    if (hasSubmenu) {
+    if (expandable) {
       const arrow = document.createElement('span');
-      arrow.className = 'material-icons';
+      arrow.className = 'material-icons expand-arrow';
       arrow.style.fontSize = '16px';
       arrow.style.color = '#999';
-      arrow.textContent = 'chevron_right';
+      arrow.textContent = 'expand_more';
       item.appendChild(arrow);
     }
 
     item.onmousedown = (e) => e.stopPropagation();
     item.onclick = (e) => {
       e.stopPropagation();
-      if (hasSubmenu) {
-        action(); // No cerrar el menú, solo cambiar contenido
-      } else {
-        const wrapper = openContextMenu;
-        if (wrapper) {
-          const m = wrapper.querySelector('.context-menu');
-          if (m) m.remove();
-        }
-        openContextMenu = null;
-        action();
-      }
+      action(item);
     };
-    menu.appendChild(item);
-  });
-}
-
-function showMoveSubmenu(menu, node, otherLibraries) {
-  menu.innerHTML = '';
-
-  // Cabecera con botón "atrás"
-  const header = document.createElement('div');
-  header.className = 'context-menu-item';
-  header.style.fontWeight = '500';
-  header.style.borderBottom = '1px solid #eee';
-
-  const backIcon = document.createElement('span');
-  backIcon.className = 'material-icons';
-  backIcon.style.fontSize = '16px';
-  backIcon.textContent = 'chevron_left';
-
-  const backLabel = document.createElement('span');
-  backLabel.textContent = 'Mover a…';
-
-  header.append(backIcon, backLabel);
-  header.onmousedown = (e) => e.stopPropagation();
-  header.onclick = (e) => {
-    e.stopPropagation();
-    // Volver a abrir el menú principal
-    const wrapper = openContextMenu;
-    if (wrapper) {
-      const m = wrapper.querySelector('.context-menu');
-      if (m) m.remove();
-      openContextMenu = null;
-      toggleContextMenu(wrapper, node);
-    }
+    return item;
   };
-  menu.appendChild(header);
 
-  // Lista de bibliotecas destino
-  otherLibraries.forEach(([id, lib]) => {
-    const item = document.createElement('div');
-    item.className = 'context-menu-item';
+  // 1. Favorito
+  menu.appendChild(createItem({
+    icon: node.isFavorite ? 'star' : 'star_border',
+    label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+    action: () => { closeAllContextMenus(); toggleFavorite(node.id); }
+  }));
 
-    const iconEl = document.createElement('span');
-    iconEl.className = 'material-icons';
-    iconEl.style.fontSize = '16px';
-    iconEl.textContent = 'folder_special';
+  // 2. Duplicar
+  menu.appendChild(createItem({
+    icon: 'file_copy',
+    label: 'Duplicar',
+    action: () => { closeAllContextMenus(); duplicateNode(node.id); }
+  }));
 
-    const labelEl = document.createElement('span');
-    labelEl.textContent = lib.name;
+  // 3. Mover a biblioteca... (con expansión inline)
+  if (canMove) {
+    const moveItem = createItem({
+      icon: 'drive_file_move',
+      label: 'Mover a biblioteca…',
+      expandable: true,
+      action: (itemEl) => {
+        // Toggle: si ya está expandido, colapsar
+        const isExpanded = itemEl.classList.contains('expanded');
+        // Limpiar cualquier expansión previa
+        menu.querySelectorAll('.sub-item').forEach(el => el.remove());
+        menu.querySelectorAll('.context-menu-item.expanded').forEach(el => {
+          el.classList.remove('expanded');
+          const arr = el.querySelector('.expand-arrow');
+          if (arr) arr.textContent = 'expand_more';
+        });
 
-    item.append(iconEl, labelEl);
-    item.onmousedown = (e) => e.stopPropagation();
-    item.onclick = (e) => {
-      e.stopPropagation();
-      const wrapper = openContextMenu;
-      if (wrapper) {
-        const m = wrapper.querySelector('.context-menu');
-        if (m) m.remove();
+        if (isExpanded) return; // ya estaba abierto: solo cerramos
+
+        itemEl.classList.add('expanded');
+        const arr = itemEl.querySelector('.expand-arrow');
+        if (arr) arr.textContent = 'expand_less';
+
+        // Insertar items de bibliotecas destino justo después
+        let insertAfter = itemEl;
+        otherLibraries.forEach(([id, lib]) => {
+          const subItem = createItem({
+            icon: 'folder_special',
+            label: lib.name,
+            isSubItem: true,
+            action: () => {
+              closeAllContextMenus();
+              moveNodeToLibrary(node.id, id);
+            }
+          });
+          insertAfter.after(subItem);
+          insertAfter = subItem;
+        });
       }
-      openContextMenu = null;
-      moveNodeToLibrary(node.id, id);
-    };
-    menu.appendChild(item);
-  });
+    });
+    menu.appendChild(moveItem);
+  }
+
+  // 4. Editar
+  menu.appendChild(createItem({
+    icon: 'edit',
+    label: 'Editar',
+    action: () => { closeAllContextMenus(); openModal(node.type, node.id); }
+  }));
+
+  // 5. Eliminar
+  menu.appendChild(createItem({
+    icon: 'delete',
+    label: 'Eliminar',
+    danger: true,
+    action: () => { closeAllContextMenus(); deleteNode(node.id); }
+  }));
+
+  wrapper.appendChild(menu);
+  openContextMenu = wrapper;
 }
 
 function moveNodeToLibrary(nodeId, targetLibraryId) {
