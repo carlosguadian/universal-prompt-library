@@ -1,15 +1,19 @@
 // sidepanel.js - Versión con Historial de Variables y Valores por Defecto
 
-let treeData = []; 
-let dragSrcId = null; 
-let editingId = null; 
-let variableHistory = {}; //Almacén para el historial
-let lastModifiedTimestamp = null; // Marca de tiempo
+let libraries = {};         // { libId: { name, prompts, lastModified } }
+let activeLibraryId = null; // ID de la biblioteca activa
+let treeData = [];          // Referencia a libraries[activeLibraryId].prompts
+let dragSrcId = null;
+let editingId = null;
+let variableHistory = {};   // Historial compartido entre bibliotecas
+let lastModifiedTimestamp = null;
+let openContextMenu = null; // Referencia al menú contextual abierto (para cerrarlo al hacer clic fuera)
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
   loadDarkMode();
   renderTree();
+  renderLibrarySelector();
   setupEventListeners();
 });
 
@@ -68,6 +72,7 @@ function renderTree(filterText = '') {
     const actions = document.createElement('div');
     actions.className = 'node-actions';
     
+    // Acciones primarias (visibles directamente)
     if (node.type === 'prompt') {
       actions.appendChild(createActionBtn('send', () => handleInject(node)));
       actions.appendChild(createActionBtn('content_copy', () => {
@@ -77,16 +82,16 @@ function renderTree(filterText = '') {
         saveData(false);
       }));
     }
-    // Botón de favorito (estrella)
-    const favBtn = createActionBtn(
-      node.isFavorite ? 'star' : 'star_border',
-      () => toggleFavorite(node.id)
-    );
-    if (node.isFavorite) favBtn.classList.add('favorite-active');
-    actions.appendChild(favBtn);
-    actions.appendChild(createActionBtn('file_copy', () => duplicateNode(node.id)));
-    actions.appendChild(createActionBtn('edit', () => openModal(node.type, node.id)));
-    actions.appendChild(createActionBtn('delete', () => deleteNode(node.id)));
+
+    // Menú contextual (⋮) con acciones secundarias
+    const moreWrapper = document.createElement('div');
+    moreWrapper.className = 'more-wrapper';
+
+    const moreBtn = createActionBtn('more_vert', (e) => {
+      toggleContextMenu(moreWrapper, node);
+    });
+    moreWrapper.appendChild(moreBtn);
+    actions.appendChild(moreWrapper);
 
     const spacer = document.createElement('div');
     spacer.className = 'spacer';
@@ -170,7 +175,7 @@ function createActionBtn(iconName, onClick) {
   btn.onclick = (e) => {
     e.stopPropagation();
     try {
-      const result = onClick();
+      const result = onClick(e);
       // Si es una Promise (función async), atrapar errores
       if (result && typeof result.catch === 'function') {
         result.catch(err => {
@@ -184,6 +189,83 @@ function createActionBtn(iconName, onClick) {
     }
   };
   return btn;
+}
+
+// --- MENÚ CONTEXTUAL (⋮) ---
+function toggleContextMenu(wrapper, node) {
+  // Cerrar cualquier menú abierto
+  if (openContextMenu && openContextMenu !== wrapper) {
+    const existing = openContextMenu.querySelector('.context-menu');
+    if (existing) existing.remove();
+  }
+
+  let menu = wrapper.querySelector('.context-menu');
+  if (menu) {
+    menu.remove();
+    openContextMenu = null;
+    return;
+  }
+
+  menu = document.createElement('div');
+  menu.className = 'context-menu open';
+
+  const items = [
+    {
+      icon: node.isFavorite ? 'star' : 'star_border',
+      label: node.isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos',
+      action: () => toggleFavorite(node.id)
+    },
+    {
+      icon: 'file_copy',
+      label: 'Duplicar',
+      action: () => duplicateNode(node.id)
+    },
+    {
+      icon: 'edit',
+      label: 'Editar',
+      action: () => openModal(node.type, node.id)
+    },
+    {
+      icon: 'delete',
+      label: 'Eliminar',
+      danger: true,
+      action: () => deleteNode(node.id)
+    }
+  ];
+
+  items.forEach(({ icon, label, danger, action }) => {
+    const item = document.createElement('div');
+    item.className = 'context-menu-item' + (danger ? ' danger' : '');
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'material-icons';
+    iconEl.style.fontSize = '16px';
+    iconEl.textContent = icon;
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+
+    item.append(iconEl, labelEl);
+    item.onmousedown = (e) => e.stopPropagation();
+    item.onclick = (e) => {
+      e.stopPropagation();
+      menu.remove();
+      openContextMenu = null;
+      action();
+    };
+    menu.appendChild(item);
+  });
+
+  wrapper.appendChild(menu);
+  openContextMenu = wrapper;
+}
+
+function closeAllContextMenus() {
+  if (openContextMenu) {
+    const menu = openContextMenu.querySelector('.context-menu');
+    if (menu) menu.remove();
+    openContextMenu = null;
+  }
 }
 
 // --- DRAG AND DROP ---
@@ -626,26 +708,187 @@ function findNode(nodes, id) {
 }
 
 async function loadData() {
-  // Ahora también pedimos lastModified
-  const result = await chrome.storage.local.get(['promptTree', 'varHistory', 'lastModified']);
-  treeData = result.promptTree || [];
+  const result = await chrome.storage.local.get([
+    'libraries', 'activeLibraryId', 'varHistory',
+    'promptTree', 'lastModified' // legacy
+  ]);
+
   variableHistory = result.varHistory || {};
-  lastModifiedTimestamp = result.lastModified || null;
-  
-  updateLastModifiedUI(); // Actualizamos el texto al cargar
+
+  if (result.libraries && typeof result.libraries === 'object' && Object.keys(result.libraries).length > 0) {
+    // Formato nuevo
+    libraries = result.libraries;
+    activeLibraryId = result.activeLibraryId && libraries[result.activeLibraryId]
+      ? result.activeLibraryId
+      : Object.keys(libraries)[0];
+  } else {
+    // Migración desde formato legacy
+    const legacyTree = result.promptTree || [];
+    const legacyTimestamp = result.lastModified || null;
+    const defaultId = crypto.randomUUID();
+    libraries = {
+      [defaultId]: {
+        name: 'Mi Biblioteca',
+        prompts: legacyTree,
+        lastModified: legacyTimestamp
+      }
+    };
+    activeLibraryId = defaultId;
+    // Guardar migración inmediatamente
+    chrome.storage.local.set({ libraries, activeLibraryId });
+    chrome.storage.local.remove(['promptTree', 'lastModified']);
+  }
+
+  treeData = libraries[activeLibraryId].prompts;
+  lastModifiedTimestamp = libraries[activeLibraryId].lastModified || null;
+
+  updateLastModifiedUI();
 }
 
 function saveData(updateTimestamp = true) {
   if (updateTimestamp) {
     lastModifiedTimestamp = Date.now();
+    libraries[activeLibraryId].lastModified = lastModifiedTimestamp;
   }
+  // Asegurar que treeData y libraries[activeLibraryId].prompts son la misma referencia
+  libraries[activeLibraryId].prompts = treeData;
+
   chrome.storage.local.set({
-    promptTree: treeData,
-    varHistory: variableHistory,
-    lastModified: lastModifiedTimestamp
+    libraries,
+    activeLibraryId,
+    varHistory: variableHistory
   });
   updateLastModifiedUI();
 }
+// --- GESTIÓN DE BIBLIOTECAS ---
+function renderLibrarySelector() {
+  const nameEl = document.getElementById('libraryName');
+  if (nameEl) nameEl.textContent = libraries[activeLibraryId]?.name || 'Mi Biblioteca';
+
+  const dropdown = document.getElementById('libraryDropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = '';
+
+  // Listar bibliotecas existentes
+  Object.entries(libraries).forEach(([id, lib]) => {
+    const item = document.createElement('div');
+    item.className = 'library-dropdown-item' + (id === activeLibraryId ? ' active' : '');
+
+    const icon = document.createElement('span');
+    icon.className = 'material-icons';
+    icon.style.fontSize = '16px';
+    icon.textContent = id === activeLibraryId ? 'check' : 'folder_special';
+
+    const name = document.createElement('span');
+    name.className = 'library-item-name';
+    name.textContent = lib.name;
+
+    const actions = document.createElement('span');
+    actions.className = 'library-item-actions';
+
+    const editIcon = document.createElement('span');
+    editIcon.className = 'material-icons library-item-action';
+    editIcon.textContent = 'edit';
+    editIcon.title = 'Renombrar';
+    editIcon.onclick = (e) => { e.stopPropagation(); renameLibrary(id); };
+
+    const deleteIcon = document.createElement('span');
+    deleteIcon.className = 'material-icons library-item-action danger';
+    deleteIcon.textContent = 'delete';
+    deleteIcon.title = 'Eliminar';
+    deleteIcon.onclick = (e) => { e.stopPropagation(); deleteLibrary(id); };
+
+    actions.append(editIcon, deleteIcon);
+
+    item.append(icon, name, actions);
+    item.onclick = () => { switchLibrary(id); closeDropdown(); };
+    dropdown.appendChild(item);
+  });
+
+  // Separador
+  const divider = document.createElement('div');
+  divider.className = 'library-dropdown-divider';
+  dropdown.appendChild(divider);
+
+  // Opción "Nueva biblioteca"
+  const newItem = document.createElement('div');
+  newItem.className = 'library-dropdown-item new-library';
+  const plusIcon = document.createElement('span');
+  plusIcon.className = 'material-icons';
+  plusIcon.style.fontSize = '16px';
+  plusIcon.textContent = 'add';
+  const newLabel = document.createElement('span');
+  newLabel.textContent = 'Nueva biblioteca';
+  newItem.append(plusIcon, newLabel);
+  newItem.onclick = () => { createLibrary(); closeDropdown(); };
+  dropdown.appendChild(newItem);
+}
+
+function toggleDropdown() {
+  document.getElementById('libraryDropdown').classList.toggle('hidden');
+}
+
+function closeDropdown() {
+  document.getElementById('libraryDropdown').classList.add('hidden');
+}
+
+function switchLibrary(id) {
+  if (!libraries[id] || id === activeLibraryId) return;
+  activeLibraryId = id;
+  treeData = libraries[id].prompts;
+  lastModifiedTimestamp = libraries[id].lastModified || null;
+  chrome.storage.local.set({ activeLibraryId });
+  renderLibrarySelector();
+  renderTree();
+  updateLastModifiedUI();
+}
+
+function createLibrary() {
+  const name = prompt('Nombre de la nueva biblioteca:');
+  if (!name || !name.trim()) return;
+  const id = crypto.randomUUID();
+  libraries[id] = { name: name.trim(), prompts: [], lastModified: Date.now() };
+  activeLibraryId = id;
+  treeData = libraries[id].prompts;
+  lastModifiedTimestamp = libraries[id].lastModified;
+  chrome.storage.local.set({ libraries, activeLibraryId });
+  renderLibrarySelector();
+  renderTree();
+  updateLastModifiedUI();
+  showToast('✓ Biblioteca creada');
+}
+
+function renameLibrary(id) {
+  const lib = libraries[id];
+  if (!lib) return;
+  const newName = prompt('Nuevo nombre:', lib.name);
+  if (!newName || !newName.trim()) return;
+  lib.name = newName.trim();
+  chrome.storage.local.set({ libraries });
+  renderLibrarySelector();
+  showToast('✓ Renombrada');
+}
+
+function deleteLibrary(id) {
+  if (Object.keys(libraries).length === 1) {
+    alert('No puedes eliminar la única biblioteca. Crea otra primero.');
+    return;
+  }
+  const lib = libraries[id];
+  if (!confirm(`¿Eliminar la biblioteca "${lib.name}" y todos sus prompts?`)) return;
+  delete libraries[id];
+  if (activeLibraryId === id) {
+    activeLibraryId = Object.keys(libraries)[0];
+    treeData = libraries[activeLibraryId].prompts;
+    lastModifiedTimestamp = libraries[activeLibraryId].lastModified || null;
+  }
+  chrome.storage.local.set({ libraries, activeLibraryId });
+  renderLibrarySelector();
+  renderTree();
+  updateLastModifiedUI();
+  showToast('✓ Eliminada');
+}
+
 // NUEVA FUNCIÓN: Para formatear y mostrar la fecha
 function updateLastModifiedUI() {
   const displayElement = document.getElementById('lastModified');
@@ -686,15 +929,30 @@ function setupEventListeners() {
   document.getElementById('addPromptBtn').onclick = () => addNewItem('prompt');
   document.getElementById('searchInput').addEventListener('input', (e) => renderTree(e.target.value));
   document.getElementById('darkModeBtn').onclick = toggleDarkMode;
+
+  // Selector de bibliotecas
+  document.getElementById('librarySelectorBtn').onclick = (e) => {
+    e.stopPropagation();
+    toggleDropdown();
+  };
+
+  // Cerrar dropdown y menú contextual al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.library-selector')) closeDropdown();
+    if (!e.target.closest('.more-wrapper')) closeAllContextMenus();
+  });
   document.getElementById('exportBtn').onclick = () => {
+    const libName = libraries[activeLibraryId]?.name || 'biblioteca';
     const exportData = {
+      libraryName: libName,
       prompts: treeData,
       variableHistory: variableHistory
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "prompts_backup.json");
+    const safeName = libName.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    dlAnchorElem.setAttribute("download", `prompts_${safeName}.json`);
     document.body.appendChild(dlAnchorElem);
     dlAnchorElem.click();
     dlAnchorElem.remove();
@@ -733,13 +991,38 @@ function setupEventListeners() {
           return;
         }
 
-        treeData = importedTree;
+        // Preguntar destino: nueva biblioteca o reemplazar la activa
+        const importedName = (parsed && parsed.libraryName) ? parsed.libraryName : 'Importada';
+        const choice = confirm(
+          `¿Importar como nueva biblioteca "${importedName}"?\n\n` +
+          `Aceptar: crear una nueva biblioteca.\n` +
+          `Cancelar: reemplazar la biblioteca actual.`
+        );
+
+        if (choice) {
+          // Crear nueva biblioteca
+          const newId = crypto.randomUUID();
+          libraries[newId] = {
+            name: importedName,
+            prompts: importedTree,
+            lastModified: Date.now()
+          };
+          activeLibraryId = newId;
+          treeData = libraries[newId].prompts;
+          lastModifiedTimestamp = libraries[newId].lastModified;
+        } else {
+          // Reemplazar la activa
+          treeData = importedTree;
+          libraries[activeLibraryId].prompts = treeData;
+        }
+
         if (importedHistory && typeof importedHistory === 'object') {
-          variableHistory = importedHistory;
+          variableHistory = { ...variableHistory, ...importedHistory };
         }
         saveData();
+        renderLibrarySelector();
         renderTree();
-        alert('Biblioteca restaurada');
+        showToast('✓ Biblioteca importada');
       } catch(err) {
         alert('Error al leer el archivo: JSON no válido.');
       }
