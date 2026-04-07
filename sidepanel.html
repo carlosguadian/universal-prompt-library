@@ -7,6 +7,14 @@
 </head>
 <body>
   <div class="header">
+    <div class="library-selector">
+      <button id="librarySelectorBtn">
+        <span class="material-icons" style="font-size:18px">collections_bookmark</span>
+        <span id="libraryName">Mi Biblioteca</span>
+        <span class="material-icons" style="font-size:16px">expand_more</span>
+      </button>
+      <div id="libraryDropdown" class="library-dropdown hidden"></div>
+    </div>
     <input type="text" id="searchInput" placeholder="Buscar prompts...">
     <div class="actions">
       <button id="addFolderBtn" title="Nueva Carpeta"><span class="material-icons">create_new_folder</span></button>
