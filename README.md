@@ -3,7 +3,7 @@
 A powerful, local-first browser extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, Perplexity, and more).
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.3.1-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-supported-blue.svg)
 ![Firefox](https://img.shields.io/badge/firefox-supported-orange.svg)
 
@@ -50,7 +50,7 @@ A powerful, local-first browser extension to manage, organize, and inject prompt
 Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-library/releases)** on the right side of this repository to download the correct version for your browser.
 
 ### 🟢 Google Chrome / Edge / Brave / Opera
-1. Download **`universal-prompt-library-chrome-v1.3.0.zip`** from the latest Release.
+1. Download **`universal-prompt-library-chrome-v1.3.1.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Chrome and go to `chrome://extensions/`.
 4. Toggle **"Developer mode"** on (top right corner).
@@ -58,7 +58,7 @@ Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-li
 6. Select the unzipped folder. **Done!**
 
 ### 🦊 Mozilla Firefox
-1. Download **`universal-prompt-library-firefox-v1.3.0.zip`** from the latest Release.
+1. Download **`universal-prompt-library-firefox-v1.3.1.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Firefox and type `about:debugging` in the address bar.
 4. Click **"This Firefox"** on the left menu.
