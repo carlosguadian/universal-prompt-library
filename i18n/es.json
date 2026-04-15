@@ -28,6 +28,7 @@
     "renamed": "✓ Renombrada",
     "deleted": "✓ Eliminada",
     "imported": "✓ Biblioteca importada",
+    "imported_replaced": "✓ Biblioteca \"{name}\" actualizada",
     "imported_default": "Importada"
   },
   "node": {
@@ -84,7 +85,8 @@
     "invalidFormat": "Formato de archivo no válido. Se espera un array de prompts o un objeto con { prompts, variableHistory }.",
     "invalidNodes": "El archivo contiene nodos con estructura incorrecta. Cada nodo necesita: id, title y type.",
     "invalidJson": "Error al leer el archivo: JSON no válido.",
-    "askDestination": "¿Importar como nueva biblioteca \"{name}\"?\n\nAceptar: crear una nueva biblioteca.\nCancelar: reemplazar la biblioteca actual."
+    "askDestination": "¿Importar como nueva biblioteca \"{name}\"?\n\nAceptar: crear una nueva biblioteca.\nCancelar: reemplazar la biblioteca actual.",
+    "confirmReplace": "Ya existe una biblioteca llamada \"{name}\". ¿Deseas reemplazar su contenido con los datos importados?"
   },
   "footer": {
     "promo": "Si encuentras útil la extensión y te interesa la IA",

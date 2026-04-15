@@ -28,6 +28,7 @@
     "renamed": "✓ Reanomenada",
     "deleted": "✓ Eliminada",
     "imported": "✓ Biblioteca importada",
+    "imported_replaced": "✓ Biblioteca \"{name}\" actualitzada",
     "imported_default": "Importada"
   },
   "node": {
@@ -84,7 +85,8 @@
     "invalidFormat": "Format de fitxer no vàlid. S'espera un array de prompts o un objecte amb { prompts, variableHistory }.",
     "invalidNodes": "El fitxer conté nodes amb estructura incorrecta. Cada node necessita: id, title i type.",
     "invalidJson": "Error en llegir el fitxer: JSON no vàlid.",
-    "askDestination": "Vols importar com a nova biblioteca \"{name}\"?\n\nAccepta: crea una nova biblioteca.\nCancel·la: reemplaça la biblioteca actual."
+    "askDestination": "Vols importar com a nova biblioteca \"{name}\"?\n\nAccepta: crea una nova biblioteca.\nCancel·la: reemplaça la biblioteca actual.",
+    "confirmReplace": "Ja existeix una biblioteca anomenada \"{name}\". Vols reemplaçar el seu contingut amb les dades importades?"
   },
   "footer": {
     "promo": "Si trobes útil l'extensió i t'interessa la IA",

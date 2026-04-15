@@ -28,6 +28,7 @@
     "renamed": "✓ Renamed",
     "deleted": "✓ Deleted",
     "imported": "✓ Library imported",
+    "imported_replaced": "✓ Library \"{name}\" updated",
     "imported_default": "Imported"
   },
   "node": {
@@ -84,7 +85,8 @@
     "invalidFormat": "Invalid file format. Expected an array of prompts or an object with { prompts, variableHistory }.",
     "invalidNodes": "The file contains nodes with incorrect structure. Each node needs: id, title and type.",
     "invalidJson": "Error reading file: invalid JSON.",
-    "askDestination": "Import as a new library \"{name}\"?\n\nOK: create a new library.\nCancel: replace the current library."
+    "askDestination": "Import as a new library \"{name}\"?\n\nOK: create a new library.\nCancel: replace the current library.",
+    "confirmReplace": "A library named \"{name}\" already exists. Do you want to replace its content with the imported data?"
   },
   "footer": {
     "promo": "If you find the extension useful and you're interested in AI",

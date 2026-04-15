@@ -1192,12 +1192,22 @@ function setupEventListeners() {
           return;
         }
 
-        // Preguntar destino: nueva biblioteca o reemplazar la activa
+        // Buscar si ya existe una biblioteca con el mismo nombre
         const importedName = (parsed && parsed.libraryName) ? parsed.libraryName : t('library.imported_default');
-        const choice = confirm(t('import.askDestination', { name: importedName }));
+        const existingId = Object.keys(libraries).find(id => libraries[id].name === importedName);
 
-        if (choice) {
-          // Crear nueva biblioteca
+        let toastMsg;
+        if (existingId) {
+          // Existe una biblioteca con el mismo nombre: confirmar reemplazo
+          if (!confirm(t('import.confirmReplace', { name: importedName }))) return;
+          libraries[existingId].prompts = importedTree;
+          libraries[existingId].lastModified = Date.now();
+          activeLibraryId = existingId;
+          treeData = libraries[existingId].prompts;
+          lastModifiedTimestamp = libraries[existingId].lastModified;
+          toastMsg = t('library.imported_replaced', { name: importedName });
+        } else {
+          // No existe: crear nueva biblioteca
           const newId = crypto.randomUUID();
           libraries[newId] = {
             name: importedName,
@@ -1207,10 +1217,7 @@ function setupEventListeners() {
           activeLibraryId = newId;
           treeData = libraries[newId].prompts;
           lastModifiedTimestamp = libraries[newId].lastModified;
-        } else {
-          // Reemplazar la activa
-          treeData = importedTree;
-          libraries[activeLibraryId].prompts = treeData;
+          toastMsg = t('library.imported');
         }
 
         if (importedHistory && typeof importedHistory === 'object') {
@@ -1219,7 +1226,7 @@ function setupEventListeners() {
         saveData();
         renderLibrarySelector();
         renderTree();
-        showToast(t('library.imported'));
+        showToast(toastMsg);
       } catch(err) {
         alert(t('import.invalidJson'));
       }
