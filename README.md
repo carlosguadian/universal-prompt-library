@@ -3,9 +3,10 @@
 A powerful, local-first browser extension to manage, organize, and inject prompts into any AI chatbot (ChatGPT, Claude, Gemini, DeepSeek, Perplexity, and more).
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.1-green.svg)
+![Version](https://img.shields.io/badge/version-1.3.2-green.svg)
 ![Chrome](https://img.shields.io/badge/chrome-supported-blue.svg)
 ![Firefox](https://img.shields.io/badge/firefox-supported-orange.svg)
+![Safari](https://img.shields.io/badge/safari-supported-lightgrey.svg)
 
 ## 🌟 Features
 
@@ -50,7 +51,7 @@ A powerful, local-first browser extension to manage, organize, and inject prompt
 Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-library/releases)** on the right side of this repository to download the correct version for your browser.
 
 ### 🟢 Google Chrome / Edge / Brave / Opera
-1. Download **`universal-prompt-library-chrome-v1.3.1.zip`** from the latest Release.
+1. Download **`universal-prompt-library-chrome-v1.3.2.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Chrome and go to `chrome://extensions/`.
 4. Toggle **"Developer mode"** on (top right corner).
@@ -58,12 +59,24 @@ Go to the **[Releases Page](https://github.com/carlosguadian/universal-prompt-li
 6. Select the unzipped folder. **Done!**
 
 ### 🦊 Mozilla Firefox
-1. Download **`universal-prompt-library-firefox-v1.3.1.zip`** from the latest Release.
+1. Download **`universal-prompt-library-firefox-v1.3.2.zip`** from the latest Release.
 2. Unzip the file to a folder.
 3. Open Firefox and type `about:debugging` in the address bar.
 4. Click **"This Firefox"** on the left menu.
 5. Click **"Load Temporary Add-on"**.
 6. Select the `manifest.json` file inside the unzipped folder. **Done!**
+
+### 🧭 Safari (macOS)
+
+Safari doesn't support loading unpacked web extensions directly — it requires wrapping the extension in a native app via Xcode. Safari also has no side panel/sidebar API, so the UI opens as a toolbar popup instead (`manifest-safari.json` + `action.default_popup`).
+
+Requirements: **full Xcode** (not just Command Line Tools) and macOS 13.3+ / Safari 16.4+ for Manifest V3 support.
+
+1. Clone this repository.
+2. Run `./build-safari.sh`. This copies the extension files into `dist/safari` (using `manifest-safari.json` as `manifest.json`) and, if Xcode is installed, runs `xcrun safari-web-extension-converter` for you.
+3. Xcode opens a generated app project. Press **⌘R** to build and run it.
+4. In Safari, go to **Settings → Advanced**, enable **"Show features for web developers"**, then in the **Develop** menu enable **"Allow Unsigned Extensions"**.
+5. Enable the extension in **Safari → Settings → Extensions**.
 
 ## 📖 How to Use
 
@@ -121,6 +134,8 @@ Click the ➤ **send** button or use copy to clipboard. The extension automatica
 universal-prompt-library/
 ├── manifest.json           # Chrome/Edge/Brave manifest (Manifest V3)
 ├── manifest-firefox.json   # Firefox manifest (Manifest V3 + sidebar_action)
+├── manifest-safari.json    # Safari manifest (Manifest V3 + action popup)
+├── build-safari.sh         # Packages dist/safari and runs the Xcode converter
 ├── background.js           # Service worker (opens side panel on click)
 ├── content.js              # Content script (injection engine)
 ├── sidepanel.html          # Side panel UI structure

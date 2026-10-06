@@ -10,6 +10,9 @@ let lastModifiedTimestamp = null;
 let openContextMenu = null; // Referencia al menú contextual abierto (para cerrarlo al hacer clic fuera)
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (new URLSearchParams(location.search).get('embed') === 'popup') {
+    document.body.classList.add('popup-mode');
+  }
   await initI18n();
   await loadData();
   loadDarkMode();

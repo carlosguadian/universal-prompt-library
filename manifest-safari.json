@@ -3,19 +3,21 @@
   "name": "Universal Prompt Library",
   "version": "1.3.2",
   "description": "Una potente extensión para gestionar e inyectar prompts en cualquier chatbot de IA.",
-  "author": "Carlos Guadián",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "author": "Carlos Guadián Orta <admin@k-government.com>",
+  "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
 
   "background": {
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
 
-  "sidebar_action": {
-    "default_panel": "sidepanel.html",
-    "default_icon": "images/icon-32.png",
+  "action": {
+    "default_popup": "sidepanel.html?embed=popup",
     "default_title": "Universal Prompt Library",
-    "open_at_install": true
+    "default_icon": {
+      "16": "images/icon-16.png",
+      "32": "images/icon-32.png"
+    }
   },
 
   "content_scripts": [
@@ -31,12 +33,5 @@
     "32": "images/icon-32.png",
     "48": "images/icon-48.png",
     "128": "images/icon-128.png"
-  },
-
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "universal-prompt-library@carlosguadian.com",
-      "strict_min_version": "109.0"
-    }
   }
 }
