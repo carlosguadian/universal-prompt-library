@@ -6,13 +6,55 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+// Busca la caja de entrada real del chat, ignorando editables que formen parte
+// de los mensajes/resultados (bloques de escritura, código, etc.)
+function findInputElement() {
+  const isVisible = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  };
+  const isInsideMessage = (el) =>
+    !!el.closest(
+      '[data-message-author-role], [data-testid^="conversation-turn"], article, ' +
+      '[data-message-id], .markdown, pre, [class*="transcriptContent"]'
+    );
+  const usable = (el) => el && !el.disabled && !el.readOnly && isVisible(el) && !isInsideMessage(el);
+
+  // 1. Selectores específicos de composer (ChatGPT y similares)
+  const specific = [
+    '#prompt-textarea',
+    '#pending-conversation-input',
+    '[data-composer-input] textarea',
+    '[data-composer-input] [contenteditable="true"]',
+    '[data-composer-body] textarea',
+    '[data-composer-body] [contenteditable="true"]',
+    'form textarea',
+    'form [contenteditable="true"]'
+  ];
+  for (const sel of specific) {
+    const el = Array.from(document.querySelectorAll(sel)).reverse().find(usable);
+    if (el) return el;
+  }
+
+  // 2. Foco actual si ya es un campo editable válido
+  const active = document.activeElement;
+  if (active && (active.tagName === 'TEXTAREA' || active.isContentEditable) && usable(active)) {
+    return active;
+  }
+
+  // 3. Fallback genérico: el último editable visible fuera de mensajes
+  // (el composer suele estar al final del DOM)
+  const generic = ['div[contenteditable="true"]', 'textarea', 'input[type="text"]'];
+  for (const sel of generic) {
+    const el = Array.from(document.querySelectorAll(sel)).reverse().find(usable);
+    if (el) return el;
+  }
+  return null;
+}
+
 function injectText(text) {
   // 1. ESTRATEGIA DE BÚSQUEDA INTELIGENTE
-  let inputElement = 
-    document.querySelector('#prompt-textarea') || // ChatGPT
-    document.querySelector('div[contenteditable="true"]') || // Claude, Gemini
-    document.querySelector('textarea') || // Perplexity, etc
-    document.querySelector('input[type="text"]');
+  const inputElement = findInputElement();
 
   if (!inputElement) {
     alert("No he podido detectar automáticamente la caja de chat en esta web.");
